@@ -15,9 +15,10 @@ if [ ! -f "$BINDING_GYP" ]; then
   "targets": [
     {
       "target_name": "$MODULE_NAME",
-      "sources": ["$SRC_FILE"],
+      "sources": ["$SRC_FILE"]
     }
   ]
 }
 EOF
     echo "binding.gyp created successfully."
+fi
