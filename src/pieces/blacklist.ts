@@ -88,7 +88,7 @@ async function register(bot: Client): Promise<void> {
 		if (msg.partial) {
 			msg = await msg.fetch();
 		}
-		msg = msg as Message;
+		msg = msg as Message<true>;
 
 		filterMessages(msg).catch(async error => bot.emit('error', error));
 	});
