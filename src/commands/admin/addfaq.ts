@@ -95,7 +95,7 @@ export async function handleModalSubmit(interaction) {
 			await interaction.client.mongo.collection(DB.FAQS).insertOne(newFAQ);
 
 			const responseEmbed = new EmbedBuilder()
-				.setColor('#000000')
+				.setColor('#00FF00')
 				.setTitle('FAQ Added!')
 				.setDescription(`The question has been added to the FAQ list.`)
 				.addFields({ name: '\u200B', value: '\u200B' },

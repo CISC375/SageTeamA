@@ -1,4 +1,3 @@
-/* eslint-disable id-length */
 import { ADMIN_PERMS } from '@lib/permissions';
 import { Command } from '@lib/types/Command';
 import {
@@ -60,7 +59,7 @@ export default class extends Command {
 }
 
 export async function setupCategoryHandler(client) {
-	client.on(Events.InteractionCreate, async (interaction) => {
+	const interactionListener = async (interaction) => {
 		if (interaction.isStringSelectMenu()) {
 			if (interaction.customId === 'select_category') {
 				await handleCategorySelection(interaction);
@@ -72,8 +71,12 @@ export async function setupCategoryHandler(client) {
 		} else if (interaction.isButton()) {
 			if (interaction.customId === 'confirm_delete') {
 				await deleteQuestion(interaction);
+				setTimeout(() => {
+					client.removeListener(Events.InteractionCreate, interactionListener);
+					console.log('Removed listener for category selection.');
+				}, 1000);
 			} else if (interaction.customId === 'cancel_delete') {
-				return interaction.update({
+				await interaction.update({
 					content: '',
 					embeds: [new EmbedBuilder()
 						.setColor('#000000')
@@ -81,10 +84,14 @@ export async function setupCategoryHandler(client) {
 						.setDescription(`The question has not been removed.`)],
 					components: []
 				});
+				setTimeout(() => {
+					client.removeListener(Events.InteractionCreate, interactionListener);
+					console.log('Removed listener for category selection.');
+				}, 1000);
 			}
 		}
-		return;
-	});
+	};
+	client.on(Events.InteractionCreate, interactionListener);
 }
 
 export async function handleCategorySelection(
@@ -174,9 +181,9 @@ async function showQuestions(
 		.setCustomId('select_question')
 		.setPlaceholder('Select a question to delete')
 		.addOptions(
-			questions.map((q) => ({
-				label: q.question,
-				value: q.question
+			questions.map((qna) => ({
+				label: qna.question,
+				value: qna.question
 			}))
 		);
 
@@ -261,16 +268,15 @@ export async function deleteQuestion(interaction: StringSelectMenuInteraction) {
 		.deleteOne({ question: removing });
 
 	const responseEmbed = new EmbedBuilder()
-		.setColor('#000000')
+		.setColor('#00FF00')
 		.setTitle('FAQ Removed!')
 		.setDescription(`The question has been removed successfully from the FAQ list.`)
 		.addFields({ name: '\u200B', value: '\u200B' },
 			{ name: 'Question', value: removing });
 
-	return interaction.followUp({
+	await interaction.editReply({
 		content: '',
 		embeds: [responseEmbed],
-		components: [],
-		ephemeral: true
+		components: []
 	});
 }
