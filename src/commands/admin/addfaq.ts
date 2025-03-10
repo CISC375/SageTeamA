@@ -105,13 +105,13 @@ export async function handleModalSubmit(interaction) {
 					{ name: 'Category', value: category, inline: true },
 					{ name: 'Useful Link', value: link, inline: true }
 				);
-			return interaction.editReply({ embeds: [responseEmbed], ephemeral: true });
+			return interaction.editReply({ content: '', embeds: [responseEmbed], ephemeral: true });
 		}
 	}
 }
 
 export async function setupModalHandler(client) {
-	client.on(Events.InteractionCreate, async (interaction) => {
+	client.once(Events.InteractionCreate, async (interaction) => {
 		if (interaction.isModalSubmit()) {
 			await handleModalSubmit(interaction);
 		}
