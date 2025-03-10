@@ -338,7 +338,7 @@ export async function handleModalSubmit(interaction) {
 				.setColor('#FF0000')
 				.setTitle('Error')
 				.setDescription(`Failed to modify the question **${oldQuestion}**.`);
-			return interaction.editReply({ content: '', embeds: [errorEmbed], components: [], ephemeral: true });
+			return interaction.editReply({ content: '', embeds: [errorEmbed], components: [] });
 		}
 
 		// Create an embed to show the success message
@@ -356,7 +356,7 @@ export async function handleModalSubmit(interaction) {
 
 		// Send the success message
 		await interaction.editReply({
-			content: '', embeds: [responseEmbed], components: [], ephemeral: true
+			content: '', embeds: [responseEmbed], components: []
 		});
 	}
 }
