@@ -1,130 +1,277 @@
+/* eslint-disable id-length */
 import { ADMIN_PERMS } from '@lib/permissions';
 import { Command } from '@lib/types/Command';
-import { ApplicationCommandPermissions, ChatInputCommandInteraction, ApplicationCommandOptionData, ApplicationCommandOptionType, InteractionResponse, EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, ComponentType } from 'discord.js';
+import {
+	ActionRowBuilder,
+	StringSelectMenuBuilder,
+	StringSelectMenuInteraction,
+	ChatInputCommandInteraction,
+	EmbedBuilder,
+	CommandInteraction,
+	ApplicationCommandPermissions,
+	Events,
+	ButtonBuilder,
+	ButtonStyle
+} from 'discord.js';
 import { DB } from '@root/config';
 
 export default class extends Command {
+
 	description = 'Removes existing frequently asked questions from FAQ list.';
 	runInDM = false;
 	permissions: ApplicationCommandPermissions[] = [ADMIN_PERMS];
 
-	options: ApplicationCommandOptionData[] = [{
-		name: 'category1',
-		description: 'Select a category.',
-		type: ApplicationCommandOptionType.String,
-		required: true,
-		autocomplete: true,
-	},
-	{
-		name: 'question',
-		description: 'Select the question to remove.',
-		type: ApplicationCommandOptionType.String,
-		required: true,
-		autocomplete: true,
-	},
-	{
-		name: 'category2',
-		description: 'Select a subcategory (if available).',
-		type: ApplicationCommandOptionType.String,
-		required: false,
-		autocomplete: true,
-	}]
-
-	async autocomplete(interaction) {
-		const focusedOption = interaction.options.getFocused(true);
-		const allCategories = await interaction.client.mongo.collection(DB.FAQS).distinct('category');
-		console.log("categories:"+allCategories)
-
-		if (focusedOption.name === 'category1') {
-			const topCategories = [...new Set(allCategories.map(cat => cat.split('/')[0]))];
-			const choices = topCategories.map(category => ({ name: category, value: category }));
-			return interaction.respond(choices.slice(0, 25));
+	async run(interaction: ChatInputCommandInteraction) {
+		if (interaction.replied || interaction.deferred) {
+			return;
 		}
+		setupCategoryHandler(interaction.client);
 
-		if (focusedOption.name === 'category2') {
-			const category1 = interaction.options.getString('category1');
-			if (!category1) return interaction.respond([]);
+		const categories = await interaction.client.mongo
+			.collection(DB.FAQS)
+			.distinct('category');
 
-			const subCategories = [...new Set(allCategories
-				.filter(cat => cat.startsWith(`${category1}/`))
-				.map(cat => cat.split('/')[1]))];
+		const topCategories = categories
+			.map((cat) => cat.split('/')[0])
+			.filter((value, index, self) => self.indexOf(value) === index);
 
-			if (subCategories.length === 0) {
-				return interaction.respond([]);
-			}
-
-			const choices = subCategories.map(subCat => ({ name: `${category1}/${subCat}`, value: `${category1}/${subCat}` }));
-			return interaction.respond(choices.slice(0, 25));
-		}
-
-		if (focusedOption.name === 'question') {
-			const category2 = interaction.options.getString('category2');
-			const category1 = interaction.options.getString('category1');
-
-			const selectedCategory = category2 || category1;
-			if (!selectedCategory) return interaction.respond([]);
-
-			const questions = await interaction.client.mongo.collection(DB.FAQS).find({ category: selectedCategory }).toArray();
-			const choices = questions.map(faq => ({ name: faq.question, value: faq.question }));
-			return interaction.respond(choices.slice(0, 25));
-		}
-	}
-	
-
-	async run(interaction: ChatInputCommandInteraction): Promise<InteractionResponse<boolean> | void> {
-		const category2 = interaction.options.getString('category2');
-		const category1 = interaction.options.getString('category1');
-		const question = interaction.options.getString('question');
-
-		const selectedCategory = category2 || category1;
-
-		const faqEntry = await interaction.client.mongo.collection(DB.FAQS).findOne({ category: selectedCategory, question });
-		if (!faqEntry) {
-			return interaction.reply({ content: '❌ The selected question does not exist.', ephemeral: true });
-		}
-
-		const confirmButton = new ButtonBuilder()
-			.setCustomId('confirm_delete')
-			.setLabel('Delete')
-			.setStyle(ButtonStyle.Danger);
-
-		const cancelButton = new ButtonBuilder()
-			.setCustomId('cancel_delete')
-			.setLabel('Cancel')
-			.setStyle(ButtonStyle.Secondary);
-
-		const row = new ActionRowBuilder<ButtonBuilder>().addComponents(confirmButton, cancelButton);
-
-		const confirmationEmbed = new EmbedBuilder()
-			.setColor('#FF0000')
-			.setTitle('❗ Confirm Deletion')
-			.setDescription(`Are you sure you want to delete the following question? This action cannot be undone.`)
-			.addFields(
-				{ name: 'Category', value: selectedCategory },
-				{ name: 'Question', value: question }
+		const categorySelectMenu = new StringSelectMenuBuilder()
+			.setCustomId('select_category')
+			.setPlaceholder('Select a category')
+			.addOptions(
+				topCategories.map((category) => ({
+					label: category,
+					value: category
+				}))
 			);
 
-		const message = await interaction.reply({ embeds: [confirmationEmbed], components: [row], ephemeral: true });
+		const row
+			= new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+				categorySelectMenu
+			);
 
-		const collector = message.createMessageComponentCollector({ componentType: ComponentType.Button, time: 15000 });
-
-		collector.on('collect', async (buttonInteraction) => {
-			if (buttonInteraction.user.id !== interaction.user.id) {
-				return buttonInteraction.reply({ content: '❌ You are not authorized to perform this action.', ephemeral: true });
-			}
-
-			if (buttonInteraction.customId === 'confirm_delete') {
-				await interaction.client.mongo.collection(DB.FAQS).deleteOne({ category: selectedCategory, question });
-				await buttonInteraction.update({ content: `✅ The question **"${question}"** has been deleted successfully.`, embeds: [], components: [] });
-			} else if (buttonInteraction.customId === 'cancel_delete') {
-				await buttonInteraction.update({ content: '❌ Deletion has been canceled.', embeds: [], components: [] });
-			}
-
-			collector.stop();
+		await interaction.reply({
+			content: 'Select a category to delete questions from:',
+			components: [row],
+			ephemeral: true
 		});
-
-		collector.on('end', async () => {
-			await message.edit({ components: [] }).catch(() => {});
-		});
+		return;
 	}
+
+}
+
+export async function setupCategoryHandler(client) {
+	client.on(Events.InteractionCreate, async (interaction) => {
+		if (interaction.isStringSelectMenu()) {
+			if (interaction.customId === 'select_category') {
+				await handleCategorySelection(interaction);
+			} else if (interaction.customId === 'select_subcategory') {
+				await handleSubcategorySelection(interaction);
+			} else if (interaction.customId === 'select_question') {
+				await handleQuestionSelection(interaction);
+			}
+		} else if (interaction.isButton()) {
+			if (interaction.customId === 'confirm_delete') {
+				await deleteQuestion(interaction);
+			} else if (interaction.customId === 'cancel_delete') {
+				return interaction.update({
+					content: '',
+					embeds: [new EmbedBuilder()
+						.setColor('#000000')
+						.setTitle('Deletion canceled.')
+						.setDescription(`The question has not been removed.`)],
+					components: []
+				});
+			}
+		}
+		return;
+	});
+}
+
+export async function handleCategorySelection(
+	interaction: StringSelectMenuInteraction
+) {
+	const selectedCategory = interaction.values[0];
+
+	if (interaction.replied || interaction.deferred) {
+		return;
+	}
+
+	const categories = await interaction.client.mongo
+		.collection(DB.FAQS)
+		.distinct('category');
+
+	const subCategories = categories
+		.filter(
+			(cat) =>
+				cat.startsWith(`${selectedCategory}/`)
+				&& cat !== selectedCategory
+		)
+		.map((cat) => cat.split('/')[1])
+		.filter((value, index, self) => self.indexOf(value) === index);
+	if (subCategories.length > 0) {
+		await interaction.deferUpdate();
+
+		const subCategoryMenu = new StringSelectMenuBuilder()
+			.setCustomId('select_subcategory')
+			.setPlaceholder('Select a subcategory')
+			.addOptions(
+				subCategories.map((sub) => ({
+					label: sub,
+					value: `${selectedCategory}/${sub}`
+				}))
+			);
+
+		const row
+			= new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+				subCategoryMenu
+			);
+
+		await interaction.editReply({
+			content: `You selected **${selectedCategory}**. Now select a subcategory:`,
+			components: [row]
+		});
+	} else {
+		await showQuestions(interaction, selectedCategory);
+	}
+}
+
+export async function handleSubcategorySelection(
+	interaction: StringSelectMenuInteraction
+) {
+	const selectedSubcategory = interaction.values[0];
+
+	if (interaction.replied || interaction.deferred) {
+		return;
+	}
+
+	await showQuestions(interaction, selectedSubcategory);
+}
+
+async function showQuestions(
+	interaction: StringSelectMenuInteraction,
+	category: string
+) {
+	if (interaction.replied || interaction.deferred) {
+		return;
+	}
+
+	await interaction.deferUpdate();
+
+	const questions = await interaction.client.mongo
+		.collection(DB.FAQS)
+		.find({ category })
+		.toArray();
+
+	if (questions.length === 0) {
+		await interaction.editReply({
+			content: `No questions found for **${category}**.`,
+			components: []
+		});
+		return;
+	}
+
+	const questionMenu = new StringSelectMenuBuilder()
+		.setCustomId('select_question')
+		.setPlaceholder('Select a question to delete')
+		.addOptions(
+			questions.map((q) => ({
+				label: q.question,
+				value: q.question
+			}))
+		);
+
+	const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+		questionMenu
+	);
+
+	await interaction.editReply({
+		content: `Select a question to delete from **${category}**:`,
+		components: [row]
+	});
+}
+
+export async function handleQuestionSelection(
+	interaction: StringSelectMenuInteraction
+) {
+	const selectedQuestion = interaction.values[0];
+
+	const confirmEmbed = new EmbedBuilder()
+		.setColor('#FF0000')
+		.setTitle('Confirm Deletion')
+		.setDescription(
+			`Are you sure you want to delete this question?\n\n**${selectedQuestion}**`
+		);
+
+	const confirmButton = new ButtonBuilder()
+		.setCustomId('confirm_delete')
+		.setLabel('Yes')
+		.setStyle(ButtonStyle.Danger);
+
+	const cancelButton = new ButtonBuilder()
+		.setCustomId('cancel_delete')
+		.setLabel('Cancel')
+		.setStyle(ButtonStyle.Secondary);
+
+	const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+		confirmButton,
+		cancelButton
+	);
+
+	await interaction.update({
+		content: 'Please confirm your action.',
+		embeds: [confirmEmbed],
+		components: [buttonRow]
+	});
+}
+
+export async function deleteQuestion(interaction: StringSelectMenuInteraction) {
+	await interaction.deferUpdate();
+
+	const embed = interaction.message.embeds[0];
+	if (!embed || !embed.description) {
+		await interaction.update({
+			content: 'No question found to delete.',
+			components: []
+		});
+		return;
+	}
+
+	const removing = embed.description.split('**')[1];
+
+	const result = await interaction.client.mongo
+		.collection(DB.FAQS)
+		.deleteOne({ question: removing });
+
+	if (result.deletedCount === 0) {
+		await interaction.update({
+			content: ``,
+			embeds: [new EmbedBuilder()
+				.setColor('#FF0000')
+				.setTitle('Deletion Failed')
+				.setDescription(
+					`Failed to delete the question\n**${removing}**.`
+				)],
+			components: []
+		});
+		return;
+	}
+
+	await interaction.client.mongo
+		.collection(DB.FAQS)
+		.deleteOne({ question: removing });
+
+	const responseEmbed = new EmbedBuilder()
+		.setColor('#000000')
+		.setTitle('Removed FAQ!')
+		.setDescription(`The question has been removed successfully from the FAQ list.`)
+		.addFields({ name: '\u200B', value: '\u200B' },
+			{ name: 'Question', value: removing });
+
+	return interaction.followUp({
+		content: '',
+		embeds: [responseEmbed],
+		components: [],
+		ephemeral: true
+	});
 }
