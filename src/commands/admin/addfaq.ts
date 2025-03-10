@@ -1,7 +1,14 @@
 import { ADMIN_PERMS } from '@lib/permissions';
 import { Command } from '@lib/types/Command';
-import { ApplicationCommandPermissions, ChatInputCommandInteraction, InteractionResponse, EmbedBuilder,
-	TextInputStyle, TextInputBuilder, ModalBuilder, ActionRowBuilder, Events } from 'discord.js';
+import { ApplicationCommandPermissions,
+	ChatInputCommandInteraction,
+	InteractionResponse,
+	EmbedBuilder,
+	TextInputStyle,
+	TextInputBuilder,
+	ModalBuilder,
+	ActionRowBuilder,
+	Events } from 'discord.js';
 import { DB } from '@root/config';
 
 export default class extends Command {
@@ -54,12 +61,16 @@ export default class extends Command {
 		setupModalHandler(interaction.client);
 
 		await interaction.showModal(modal);
+
+		return;
 	}
 
 }
 
 export async function handleModalSubmit(interaction) {
 	if (interaction.customId === 'faqModal') {
+		await interaction.reply({ content: 'Working on it', ephemeral: true });
+
 		const question = interaction.fields.getTextInputValue('question');
 		const answer = interaction.fields.getTextInputValue('answer');
 		const category = interaction.fields.getTextInputValue('category');
@@ -72,30 +83,30 @@ export async function handleModalSubmit(interaction) {
 				.setColor('#FF0000')
 				.setTitle('FAQ Already Exists!')
 				.setDescription(`The question "${question}" already exists in the FAQ list.`);
-			return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+			return interaction.editReply({ embeds: [errorEmbed], ephemeral: true });
+		} else {
+			const newFAQ = {
+				question: question,
+				answer: answer,
+				category: category,
+				link: link
+			};
+
+			await interaction.client.mongo.collection(DB.FAQS).insertOne(newFAQ);
+
+			const responseEmbed = new EmbedBuilder()
+				.setColor('#000000')
+				.setTitle('FAQ Added!')
+				.setDescription(`The question has been added to the FAQ list.`)
+				.addFields({ name: '\u200B', value: '\u200B' },
+					{ name: 'Question', value: question },
+					{ name: 'Answer', value: answer, inline: true },
+					{ name: '\u200B', value: '\u200B' },
+					{ name: 'Category', value: category, inline: true },
+					{ name: 'Useful Link', value: link, inline: true }
+				);
+			return interaction.editReply({ embeds: [responseEmbed], ephemeral: true });
 		}
-
-		const newFAQ = {
-			question: question,
-			answer: answer,
-			category: category,
-			link: link
-		};
-
-		await interaction.client.mongo.collection(DB.FAQS).insertOne(newFAQ);
-
-		const responseEmbed = new EmbedBuilder()
-			.setColor('#000000')
-			.setTitle('Adding new FAQ...')
-			.setDescription(`The question has been added to the FAQ list.`)
-			.addFields({ name: '\u200B', value: '\u200B' },
-				{ name: 'Question', value: question },
-				{ name: 'Answer', value: answer, inline: true },
-				{ name: '\u200B', value: '\u200B' },
-				{ name: 'Category', value: category, inline: true },
-				{ name: 'Useful Link', value: link, inline: true }
-			);
-		return interaction.reply({ embeds: [responseEmbed], ephemeral: true });
 	}
 }
 
