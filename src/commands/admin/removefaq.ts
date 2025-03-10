@@ -7,7 +7,6 @@ import {
 	StringSelectMenuInteraction,
 	ChatInputCommandInteraction,
 	EmbedBuilder,
-	CommandInteraction,
 	ApplicationCommandPermissions,
 	Events,
 	ButtonBuilder,
@@ -263,7 +262,7 @@ export async function deleteQuestion(interaction: StringSelectMenuInteraction) {
 
 	const responseEmbed = new EmbedBuilder()
 		.setColor('#000000')
-		.setTitle('Removed FAQ!')
+		.setTitle('FAQ Removed!')
 		.setDescription(`The question has been removed successfully from the FAQ list.`)
 		.addFields({ name: '\u200B', value: '\u200B' },
 			{ name: 'Question', value: removing });
