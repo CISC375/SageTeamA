@@ -12,8 +12,7 @@ import {
 	ButtonStyle,
 	ModalBuilder,
 	TextInputBuilder,
-	TextInputStyle,
-	Component
+	TextInputStyle
 } from 'discord.js';
 import { DB } from '@root/config';
 
@@ -24,19 +23,20 @@ export default class extends Command {
 	permissions: ApplicationCommandPermissions[] = [ADMIN_PERMS];
 
 	async run(interaction: ChatInputCommandInteraction) {
-		if (interaction.replied || interaction.deferred) {
-			return;
-		}
+		// Set up the category handler to process category selection
 		setupCategoryHandler(interaction.client);
 
+		// Retrieve distinct categories from the database
 		const categories = await interaction.client.mongo
 			.collection(DB.FAQS)
 			.distinct('category');
 
+		// Extract top-level categories
 		const topCategories = categories
 			.map((cat) => cat.split('/')[0])
 			.filter((value, index, self) => self.indexOf(value) === index);
 
+		// Create a select menu for categories
 		const categorySelectMenu = new StringSelectMenuBuilder()
 			.setCustomId('select_category')
 			.setPlaceholder('Select a category')
@@ -47,11 +47,13 @@ export default class extends Command {
 				}))
 			);
 
+		// Create an action row and add the select menu to it
 		const row
 			= new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
 				categorySelectMenu
 			);
 
+		// Send a reply with the category select menu
 		await interaction.reply({
 			content: 'Select a category to edit questions from:',
 			components: [row],
@@ -101,14 +103,12 @@ export async function handleCategorySelection(
 ) {
 	const selectedCategory = interaction.values[0];
 
-	if (interaction.replied || interaction.deferred) {
-		return;
-	}
-
+	// Retrieve distinct categories from the database
 	const categories = await interaction.client.mongo
 		.collection(DB.FAQS)
 		.distinct('category');
 
+	// Extract subcategories
 	const subCategories = categories
 		.filter(
 			(cat) =>
@@ -120,6 +120,7 @@ export async function handleCategorySelection(
 	if (subCategories.length > 0) {
 		await interaction.deferUpdate();
 
+		// Create a select menu for subcategories
 		const subCategoryMenu = new StringSelectMenuBuilder()
 			.setCustomId('select_subcategory')
 			.setPlaceholder('Select a subcategory')
@@ -130,11 +131,13 @@ export async function handleCategorySelection(
 				}))
 			);
 
+		// Create an action row and add the select menu to it
 		const row
 			= new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
 				subCategoryMenu
 			);
 
+		// Update the reply with the subcategory select menu
 		await interaction.editReply({
 			content: `You selected **${selectedCategory}**. Now select a subcategory:`,
 			components: [row]
@@ -149,10 +152,6 @@ export async function handleSubcategorySelection(
 ) {
 	const selectedSubcategory = interaction.values[0];
 
-	if (interaction.replied || interaction.deferred) {
-		return;
-	}
-
 	await showQuestions(interaction, selectedSubcategory);
 }
 
@@ -160,17 +159,15 @@ async function showQuestions(
 	interaction: StringSelectMenuInteraction,
 	category: string
 ) {
-	if (interaction.replied || interaction.deferred) {
-		return;
-	}
-
 	await interaction.deferUpdate();
 
+	// Retrieve questions from the database for the selected category
 	const questions = await interaction.client.mongo
 		.collection(DB.FAQS)
 		.find({ category })
 		.toArray();
 
+	// If no questions are found, send a message
 	if (questions.length === 0) {
 		await interaction.editReply({
 			content: `No questions found for **${category}**.`,
@@ -179,6 +176,7 @@ async function showQuestions(
 		return;
 	}
 
+	// Create a select menu for questions
 	const questionMenu = new StringSelectMenuBuilder()
 		.setCustomId('select_question')
 		.setPlaceholder('Select a question to edit')
@@ -189,10 +187,12 @@ async function showQuestions(
 			}))
 		);
 
+	// Create an action row and add the select menu to it
 	const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
 		questionMenu
 	);
 
+	// Update the reply with the question select menu
 	await interaction.editReply({
 		content: `Select a question to edit from **${category}**:`,
 		components: [row]
@@ -204,6 +204,7 @@ export async function handleQuestionSelection(
 ) {
 	const selectedQuestion = interaction.values[0];
 
+	// Create an embed to confirm the question modification
 	const confirmEmbed = new EmbedBuilder()
 		.setColor('#FF0000')
 		.setTitle('Edit Question')
@@ -211,6 +212,7 @@ export async function handleQuestionSelection(
 			`Do you want to modify the question\n**"${selectedQuestion}"**?`
 		);
 
+	// Create buttons for confirmation and cancellation
 	const confirmButton = new ButtonBuilder()
 		.setCustomId('modify_qna')
 		.setLabel('Yes')
@@ -221,11 +223,13 @@ export async function handleQuestionSelection(
 		.setLabel('Cancel')
 		.setStyle(ButtonStyle.Secondary);
 
+	// Create an action row and add the buttons to it
 	const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
 		confirmButton,
 		cancelButton
 	);
 
+	// Update the reply with the confirmation embed and buttons
 	await interaction.update({
 		content: 'Please confirm your action.',
 		embeds: [confirmEmbed],
@@ -234,13 +238,16 @@ export async function handleQuestionSelection(
 }
 
 export async function handleModifyQuestion(interaction) {
+	// Extract the selected question from the embed description
 	const selectedQuestion = interaction.message.embeds[0].description.split('**')[1].replace(/^"|"$/g, '');
 
+	// Retrieve the question data from the database
 	const questionData = await interaction.client.mongo
 		.collection(DB.FAQS)
 		.findOne({ question: selectedQuestion });
 
 	if (!questionData) {
+		// If the question is not found, send an error message
 		await interaction.reply({
 			content: `The question **${selectedQuestion}** could not be found.`,
 			ephemeral: true
@@ -248,10 +255,12 @@ export async function handleModifyQuestion(interaction) {
 		return;
 	}
 
+	// Create a modal for editing the question
 	const modal = new ModalBuilder()
 		.setCustomId('modify_question_modal')
 		.setTitle('Edit Question');
 
+	// Create input fields for the modal
 	const questionInput = new TextInputBuilder()
 		.setCustomId('question')
 		.setLabel('Question')
@@ -280,6 +289,7 @@ export async function handleModifyQuestion(interaction) {
 		.setValue(questionData.link)
 		.setRequired(true);
 
+	// Add input fields to the modal
 	modal.addComponents(
 		new ActionRowBuilder<TextInputBuilder>().addComponents(questionInput),
 		new ActionRowBuilder<TextInputBuilder>().addComponents(answerInput),
@@ -287,8 +297,10 @@ export async function handleModifyQuestion(interaction) {
 		new ActionRowBuilder<TextInputBuilder>().addComponents(linkInput)
 	);
 
+	// Set up the modal handler to process the modal submission
 	setupModalHandler(interaction.client);
 
+	// Show the modal to the user
 	await interaction.showModal(modal);
 }
 
@@ -296,13 +308,16 @@ export async function handleModalSubmit(interaction) {
 	if (interaction.customId === 'modify_question_modal') {
 		await interaction.deferUpdate();
 
+		// Retrieve new values from the modal input fields
 		const newQuestion = interaction.fields.getTextInputValue('question');
 		const newAnswer = interaction.fields.getTextInputValue('answer');
 		const newCategory = interaction.fields.getTextInputValue('category');
 		const newLink = interaction.fields.getTextInputValue('link');
 
+		// Extract the old question from the message embed
 		const oldQuestion = interaction.message.embeds[0].description.split('**')[1].replace(/^"|"$/g, '');
 
+		// Update the FAQ in the database with the new values
 		const result = await interaction.client.mongo
 			.collection(DB.FAQS)
 			.updateOne(
@@ -317,6 +332,7 @@ export async function handleModalSubmit(interaction) {
 				}
 			);
 
+		// Check if the update was successful
 		if (result.modifiedCount === 0) {
 			await interaction.editReply({
 				content: `Failed to modify the question **${oldQuestion}**.`,
@@ -326,6 +342,8 @@ export async function handleModalSubmit(interaction) {
 			});
 			return;
 		}
+
+		// Create an embed to show the success message
 		const responseEmbed = new EmbedBuilder()
 			.setColor('#00FF00')
 			.setTitle('FAQ Modified!')
@@ -338,6 +356,7 @@ export async function handleModalSubmit(interaction) {
 				{ name: 'Useful Link', value: newLink, inline: true }
 			);
 
+		// Send the success message
 		await interaction.editReply({
 			content: '', embeds: [responseEmbed], components: [], ephemeral: true
 		});
