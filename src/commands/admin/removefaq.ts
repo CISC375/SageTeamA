@@ -168,11 +168,11 @@ async function showQuestions(
 
 	// If no questions are found, send a message
 	if (questions.length === 0) {
-		await interaction.editReply({
-			content: `No questions found for **${category}**.`,
-			components: []
-		});
-		return;
+		const errorEmbed = new EmbedBuilder()
+			.setColor('#FF0000')
+			.setTitle('Error')
+			.setDescription(`No questions found for **${category}**.`);
+		return interaction.editReply({ content: '', embeds: [errorEmbed], components: [] });
 	}
 
 	// Create a select menu for questions
@@ -242,11 +242,11 @@ export async function deleteQuestion(interaction: StringSelectMenuInteraction) {
 	// Extract the question to be deleted from the embed description
 	const embed = interaction.message.embeds[0];
 	if (!embed || !embed.description) {
-		await interaction.update({
-			content: 'No question found to delete.',
-			components: []
-		});
-		return;
+		const errorEmbed = new EmbedBuilder()
+			.setColor('#FF0000')
+			.setTitle('Error')
+			.setDescription(`No question found to delete.`);
+		return interaction.update({ content: '', embeds: [errorEmbed], components: [] });
 	}
 
 	const removing = embed.description.split('**')[1];
