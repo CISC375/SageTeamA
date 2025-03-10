@@ -334,13 +334,11 @@ export async function handleModalSubmit(interaction) {
 
 		// Check if the update was successful
 		if (result.modifiedCount === 0) {
-			await interaction.editReply({
-				content: `Failed to modify the question **${oldQuestion}**.`,
-				embeds: [],
-				components: [],
-				ephemeral: true
-			});
-			return;
+			const errorEmbed = new EmbedBuilder()
+				.setColor('#FF0000')
+				.setTitle('Error')
+				.setDescription(`Failed to modify the question **${oldQuestion}**.`);
+			return interaction.editReply({ content: '', embeds: [errorEmbed], components: [], ephemeral: true });
 		}
 
 		// Create an embed to show the success message
