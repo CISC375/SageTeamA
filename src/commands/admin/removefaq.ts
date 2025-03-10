@@ -20,19 +20,20 @@ export default class extends Command {
 	permissions: ApplicationCommandPermissions[] = [ADMIN_PERMS];
 
 	async run(interaction: ChatInputCommandInteraction) {
-		if (interaction.replied || interaction.deferred) {
-			return;
-		}
+		// Set up the category handler to process category selection
 		setupCategoryHandler(interaction.client);
 
+		// Retrieve distinct categories from the database
 		const categories = await interaction.client.mongo
 			.collection(DB.FAQS)
 			.distinct('category');
 
+		// Extract top-level categories
 		const topCategories = categories
 			.map((cat) => cat.split('/')[0])
 			.filter((value, index, self) => self.indexOf(value) === index);
 
+		// Create a select menu for categories
 		const categorySelectMenu = new StringSelectMenuBuilder()
 			.setCustomId('select_category')
 			.setPlaceholder('Select a category')
@@ -43,11 +44,13 @@ export default class extends Command {
 				}))
 			);
 
+		// Create an action row with the select menu
 		const row
 			= new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
 				categorySelectMenu
 			);
 
+		// Send a reply with the category select menu
 		await interaction.reply({
 			content: 'Select a category to delete questions from:',
 			components: [row],
@@ -99,14 +102,12 @@ export async function handleCategorySelection(
 ) {
 	const selectedCategory = interaction.values[0];
 
-	if (interaction.replied || interaction.deferred) {
-		return;
-	}
-
+	// Retrieve distinct categories from the database
 	const categories = await interaction.client.mongo
 		.collection(DB.FAQS)
 		.distinct('category');
 
+	// Extract subcategories
 	const subCategories = categories
 		.filter(
 			(cat) =>
@@ -118,6 +119,7 @@ export async function handleCategorySelection(
 	if (subCategories.length > 0) {
 		await interaction.deferUpdate();
 
+		// Create a select menu for subcategories
 		const subCategoryMenu = new StringSelectMenuBuilder()
 			.setCustomId('select_subcategory')
 			.setPlaceholder('Select a subcategory')
@@ -128,11 +130,13 @@ export async function handleCategorySelection(
 				}))
 			);
 
+		// Create an action row with the select menu
 		const row
 			= new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
 				subCategoryMenu
 			);
 
+		// Update the reply with the subcategory select menu
 		await interaction.editReply({
 			content: `You selected **${selectedCategory}**. Now select a subcategory:`,
 			components: [row]
@@ -147,10 +151,6 @@ export async function handleSubcategorySelection(
 ) {
 	const selectedSubcategory = interaction.values[0];
 
-	if (interaction.replied || interaction.deferred) {
-		return;
-	}
-
 	await showQuestions(interaction, selectedSubcategory);
 }
 
@@ -158,17 +158,15 @@ async function showQuestions(
 	interaction: StringSelectMenuInteraction,
 	category: string
 ) {
-	if (interaction.replied || interaction.deferred) {
-		return;
-	}
-
 	await interaction.deferUpdate();
 
+	// Retrieve questions from the database for the selected category
 	const questions = await interaction.client.mongo
 		.collection(DB.FAQS)
 		.find({ category })
 		.toArray();
 
+	// If no questions are found, send a message
 	if (questions.length === 0) {
 		await interaction.editReply({
 			content: `No questions found for **${category}**.`,
@@ -177,6 +175,7 @@ async function showQuestions(
 		return;
 	}
 
+	// Create a select menu for questions
 	const questionMenu = new StringSelectMenuBuilder()
 		.setCustomId('select_question')
 		.setPlaceholder('Select a question to delete')
@@ -187,10 +186,12 @@ async function showQuestions(
 			}))
 		);
 
+	// Create an action row with the select menu
 	const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
 		questionMenu
 	);
 
+	// Update the reply with the question select menu
 	await interaction.editReply({
 		content: `Select a question to delete from **${category}**:`,
 		components: [row]
@@ -202,6 +203,7 @@ export async function handleQuestionSelection(
 ) {
 	const selectedQuestion = interaction.values[0];
 
+	// Create an embed to confirm the question deletion
 	const confirmEmbed = new EmbedBuilder()
 		.setColor('#FF0000')
 		.setTitle('Confirm Deletion')
@@ -209,6 +211,7 @@ export async function handleQuestionSelection(
 			`Are you sure you want to delete this question?\n\n**${selectedQuestion}**`
 		);
 
+	// Create buttons for confirmation and cancellation
 	const confirmButton = new ButtonBuilder()
 		.setCustomId('confirm_delete')
 		.setLabel('Yes')
@@ -219,11 +222,13 @@ export async function handleQuestionSelection(
 		.setLabel('Cancel')
 		.setStyle(ButtonStyle.Secondary);
 
+	// Create an action row with the buttons
 	const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
 		confirmButton,
 		cancelButton
 	);
 
+	// Update the interaction with the confirmation embed and buttons
 	await interaction.update({
 		content: 'Please confirm your action.',
 		embeds: [confirmEmbed],
@@ -234,6 +239,7 @@ export async function handleQuestionSelection(
 export async function deleteQuestion(interaction: StringSelectMenuInteraction) {
 	await interaction.deferUpdate();
 
+	// Extract the question to be deleted from the embed description
 	const embed = interaction.message.embeds[0];
 	if (!embed || !embed.description) {
 		await interaction.update({
@@ -245,11 +251,13 @@ export async function deleteQuestion(interaction: StringSelectMenuInteraction) {
 
 	const removing = embed.description.split('**')[1];
 
+	// Delete the question from the database
 	const result = await interaction.client.mongo
 		.collection(DB.FAQS)
 		.deleteOne({ question: removing });
 
 	if (result.deletedCount === 0) {
+		// If deletion failed, send a failure message
 		await interaction.update({
 			content: ``,
 			embeds: [new EmbedBuilder()
@@ -263,10 +271,12 @@ export async function deleteQuestion(interaction: StringSelectMenuInteraction) {
 		return;
 	}
 
+	// Remove the FAQ from the database
 	await interaction.client.mongo
 		.collection(DB.FAQS)
 		.deleteOne({ question: removing });
 
+	// Create an embed to show the success message
 	const responseEmbed = new EmbedBuilder()
 		.setColor('#00FF00')
 		.setTitle('FAQ Removed!')
@@ -274,6 +284,7 @@ export async function deleteQuestion(interaction: StringSelectMenuInteraction) {
 		.addFields({ name: '\u200B', value: '\u200B' },
 			{ name: 'Question', value: removing });
 
+	// Send the success message
 	await interaction.editReply({
 		content: '',
 		embeds: [responseEmbed],

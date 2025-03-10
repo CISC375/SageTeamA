@@ -19,10 +19,12 @@ export default class extends Command {
 
 
 	async run(interaction: ChatInputCommandInteraction): Promise<InteractionResponse<boolean> | void> {
+		// Create a new modal for adding a FAQ
 		const modal = new ModalBuilder()
 			.setCustomId('faqModal')
 			.setTitle('Add New FAQ');
 
+		// Create input fields for the modal
 		const questionInput = new TextInputBuilder()
 			.setCustomId('question')
 			.setLabel('Question')
@@ -51,6 +53,7 @@ export default class extends Command {
 			.setStyle(TextInputStyle.Short)
 			.setRequired(true);
 
+		// Add input fields to the modal
 		modal.addComponents(
 			new ActionRowBuilder<TextInputBuilder>().addComponents(questionInput),
 			new ActionRowBuilder<TextInputBuilder>().addComponents(answerInput),
@@ -58,8 +61,10 @@ export default class extends Command {
 			new ActionRowBuilder<TextInputBuilder>().addComponents(linkInput)
 		);
 
+		// Set up the modal handler to process the modal submission
 		setupModalHandler(interaction.client);
 
+		// Show the modal to the user
 		await interaction.showModal(modal);
 
 		return;
@@ -71,20 +76,24 @@ export async function handleModalSubmit(interaction) {
 	if (interaction.customId === 'faqModal') {
 		await interaction.reply({ content: 'Working on it', ephemeral: true });
 
+		// Retrieve input values from the modal
 		const question = interaction.fields.getTextInputValue('question');
 		const answer = interaction.fields.getTextInputValue('answer');
 		const category = interaction.fields.getTextInputValue('category');
 		const link = interaction.fields.getTextInputValue('link');
 
+		// Check if the FAQ already exists in the database
 		const existingFAQ = await interaction.client.mongo.collection(DB.FAQS).findOne({ question: question });
 
 		if (existingFAQ) {
+			// If the FAQ already exists, send an error message
 			const errorEmbed = new EmbedBuilder()
 				.setColor('#FF0000')
 				.setTitle('FAQ Already Exists!')
 				.setDescription(`The question "${question}" already exists in the FAQ list.`);
 			return interaction.editReply({ embeds: [errorEmbed], ephemeral: true });
 		} else {
+			// If the FAQ does not exist, add it to the database
 			const newFAQ = {
 				question: question,
 				answer: answer,
@@ -94,6 +103,7 @@ export async function handleModalSubmit(interaction) {
 
 			await interaction.client.mongo.collection(DB.FAQS).insertOne(newFAQ);
 
+			// Send a success message
 			const responseEmbed = new EmbedBuilder()
 				.setColor('#00FF00')
 				.setTitle('FAQ Added!')
