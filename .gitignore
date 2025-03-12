@@ -4,6 +4,8 @@ resources/*
 src/commands/admin/eval.ts
 
 config.ts
+binding.gyp
+build/*
 
 # macOS stuff
 .DS_Store
