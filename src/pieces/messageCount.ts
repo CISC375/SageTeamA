@@ -73,14 +73,13 @@ async function handleFAQResponse(msg: Message): Promise<void> {
 
 	if (foundFAQ) {
 		const embed = new EmbedBuilder()
-			.setTitle(`FAQ Answer for\n"${foundFAQ.question}"`)
+			.setTitle(foundFAQ.question)
 			.setDescription(foundFAQ.answer)
 			.setColor('#00FF00')
 			.setTimestamp();
 
 		if (foundFAQ.link) {
 			embed.addFields(
-				{ name: '\u200B', value: '\u200B' },
 				{ name: 'For more details', value: foundFAQ.link });
 		}
 
