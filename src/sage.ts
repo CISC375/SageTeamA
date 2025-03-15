@@ -18,7 +18,8 @@ const BOT_INTENTS = [
 	IntentsBitField.Flags.GuildIntegrations,
 	IntentsBitField.Flags.GuildMembers,
 	IntentsBitField.Flags.GuildMessages,
-	IntentsBitField.Flags.GuildMessageReactions
+	IntentsBitField.Flags.GuildMessageReactions,
+	IntentsBitField.Flags.MessageContent
 ];
 
 const BOT_PARTIALS = [
