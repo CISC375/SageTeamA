@@ -64,7 +64,7 @@ async function handleFAQResponse(msg: Message): Promise<void> {
 	let foundFAQ = null;
 
 	for (const faq of faqs) {
-		console.log(faq.question.toLowerCase());
+		// console.log(faq.question.toLowerCase());
 		if (userQuestion.toLowerCase().includes(faq.question.toLowerCase())) {
 			foundFAQ = faq;
 			break;
