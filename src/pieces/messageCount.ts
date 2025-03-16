@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-shadow */
 import { Client, TextChannel, Role, Message, EmbedBuilder, PartialMessage, ThreadChannel, ChannelType } from 'discord.js';
 import { DatabaseError } from '@lib/types/errors';
 import { CHANNELS, DB, ROLES, GUILDS } from '@root/config';
@@ -17,6 +18,7 @@ const countedChannelTypes = [
 async function register(bot: Client): Promise<void> {
 	bot.on('messageCreate', async msg => {
 		countMessages(msg).catch(async error => bot.emit('error', error));
+		await handleFAQResponse(msg);
 	});
 	bot.on('messageDelete', async msg => {
 		if (msg.content && msg.content.startsWith('s;')) return;
@@ -51,6 +53,41 @@ async function countMessages(msg: Message): Promise<void> {
 		(err, { value }) => handleLevelUp(err, value as SageUser, msg)
 			.catch(async error => bot.emit('error', error))
 	);
+}
+
+async function handleFAQResponse(msg: Message): Promise<void> {
+	if (msg.author.bot) return;
+
+	const userQuestion = msg.content.trim();
+	const faqs = await msg.client.mongo.collection(DB.FAQS).find().toArray();
+
+	let foundFAQ = null;
+
+	for (const faq of faqs) {
+		// console.log(faq.question.toLowerCase());
+		if (userQuestion.toLowerCase().includes(faq.question.toLowerCase())) {
+			foundFAQ = faq;
+			break;
+		}
+	}
+
+	if (foundFAQ) {
+		const embed = new EmbedBuilder()
+			.setTitle(foundFAQ.question)
+			.setDescription(foundFAQ.answer)
+			.setColor('#00FF00')
+			.setTimestamp();
+
+		if (foundFAQ.link) {
+			embed.addFields(
+				{ name: 'For more details', value: foundFAQ.link });
+		}
+
+		await msg.reply({
+			content: `${msg.member}, here is the answer to your question:`,
+			embeds: [embed]
+		});
+	}
 }
 
 async function handleExpDetract(msg: Message | PartialMessage) {
