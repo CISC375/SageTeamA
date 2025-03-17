@@ -59,6 +59,24 @@ async function countMessages(msg: Message): Promise<void> {
 async function handleFAQResponse(msg: Message): Promise<void> {
 	if (msg.author.bot) return;
 
+	const cooldown = 3 * 1000;
+	const cooldownKey = `faqCooldown_${msg.author.id}`;
+	const now = Date.now();
+	const cooldownEnd = await msg.client.mongo.collection(DB.CLIENT_DATA).findOne({ _id: cooldownKey });
+
+	if (cooldownEnd && cooldownEnd.value > now) {
+		const remainingTime = Math.ceil((cooldownEnd.value - now) / 1000);
+		await msg.reply(`Please wait ${remainingTime} seconds before asking another question.`);
+		return;
+	}
+
+	// Set new cooldown expiration time
+	await msg.client.mongo.collection(DB.CLIENT_DATA).updateOne(
+		{ _id: cooldownKey },
+		{ $set: { value: now + cooldown } },
+		{ upsert: true }
+	);
+
 	const userQuestion = msg.content.trim();
 	const faqs = await msg.client.mongo.collection(DB.FAQS).find().toArray();
 
