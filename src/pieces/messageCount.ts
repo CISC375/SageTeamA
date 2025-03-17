@@ -4,6 +4,7 @@ import { DatabaseError } from '@lib/types/errors';
 import { CHANNELS, DB, ROLES, GUILDS } from '@root/config';
 import { SageUser } from '@lib/types/SageUser';
 import { calcNeededExp } from '@lib/utils/generalUtils';
+import {levenshteinDistance } from '@lib/utils/levenshtein'
 
 const startingColor = 80;
 const greenIncrement = 8;
@@ -64,12 +65,18 @@ async function handleFAQResponse(msg: Message): Promise<void> {
 	let foundFAQ = null;
 
 	for (const faq of faqs) {
-		// console.log(faq.question.toLowerCase());
-		if (userQuestion.toLowerCase().includes(faq.question.toLowerCase())) {
-			foundFAQ = faq;
-			break;
-		}
-	}
+        const distance = levenshteinDistance(userQuestion, faq.question);
+
+        // console.log(faq.question.toLowerCase());
+        // if (userQuestion.toLowerCase().includes(faq.question.toLowerCase())) {
+        //     foundFAQ = faq;
+        //     break;
+        // }
+        if (distance < 5) {
+            foundFAQ = faq;
+            break;
+        }
+    }
 
 	if (foundFAQ) {
 		const embed = new EmbedBuilder()
