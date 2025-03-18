@@ -35,19 +35,16 @@ export default class extends Command {
 		const answer = interaction.options.getString("answer");
 
 		try {
-			// Here you would implement the logic to store the FAQ suggestion
-			// This could be in a database, a pending suggestions collection, etc.
+			// Store the FAQ suggestion in the faqsuggestions collection under NateSage namespace
+			await interaction.client.mongo.collection('faqsuggestions').insertOne({
+				question,
+				answer,
+				suggestedById: interaction.user.id,
+				suggestedByUsername: interaction.user.username,
+				suggestedAt: new Date(),
+				status: 'pending',
+			});
 
-			// For example, if using a database:
-			// await db.collection('faqSuggestions').add({
-			//   question,
-			//   answer,
-			//   suggestedById: interaction.user.id,
-			//   suggestedAt: new Date(),
-			//   status: 'pending'
-			// });
-
-			// For now, just log the suggestion
 			console.log(
 				`New FAQ suggestion: Q: ${question} A: ${answer} by ${interaction.user.id}`
 			);
