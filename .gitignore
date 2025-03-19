@@ -4,6 +4,9 @@ resources/*
 src/commands/admin/eval.ts
 
 config.ts
+binding.gyp
+package-lock.json
+build
 
 # macOS stuff
 .DS_Store
@@ -113,3 +116,4 @@ dist
 
 # TernJS port file
 .tern-port
+config.ts

@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/no-shadow */
 import { Client, TextChannel, Role, Message, EmbedBuilder, PartialMessage, ThreadChannel, ChannelType } from 'discord.js';
 import { DatabaseError } from '@lib/types/errors';
 import { CHANNELS, DB, ROLES, GUILDS } from '@root/config';
 import { SageUser } from '@lib/types/SageUser';
 import { calcNeededExp } from '@lib/utils/generalUtils';
+import {levenshteinDistance } from '@lib/utils/levenshtein'
 
 const startingColor = 80;
 const greenIncrement = 8;
@@ -17,6 +19,7 @@ const countedChannelTypes = [
 async function register(bot: Client): Promise<void> {
 	bot.on('messageCreate', async msg => {
 		countMessages(msg).catch(async error => bot.emit('error', error));
+		await handleFAQResponse(msg);
 	});
 	bot.on('messageDelete', async msg => {
 		if (msg.content && msg.content.startsWith('s;')) return;
@@ -51,6 +54,88 @@ async function countMessages(msg: Message): Promise<void> {
 		(err, { value }) => handleLevelUp(err, value as SageUser, msg)
 			.catch(async error => bot.emit('error', error))
 	);
+}
+
+async function handleFAQResponse(msg: Message): Promise<void> {
+	if (msg.author.bot) return;
+
+	const cooldown = 3 * 1000;
+	const cooldownKey = `faqCooldown_${msg.author.id}`;
+	const now = Date.now();
+	const cooldownEnd = await msg.client.mongo.collection(DB.CLIENT_DATA).findOne({ _id: cooldownKey });
+
+	if (cooldownEnd && cooldownEnd.value > now) {
+		const remainingTime = Math.ceil((cooldownEnd.value - now) / 1000);
+		await msg.reply(`Please wait ${remainingTime} seconds before asking another question.`);
+		return;
+	}
+
+	// Set new cooldown expiration time
+	await msg.client.mongo.collection(DB.CLIENT_DATA).updateOne(
+		{ _id: cooldownKey },
+		{ $set: { value: now + cooldown } },
+		{ upsert: true }
+	);
+
+	const userQuestion = msg.content.trim();
+	const faqs = await msg.client.mongo.collection(DB.FAQS).find().toArray();
+
+	let foundFAQ = null;
+
+	for (const faq of faqs) {
+        const distance = levenshteinDistance(userQuestion, faq.question);
+
+        // console.log(faq.question.toLowerCase());
+        // if (userQuestion.toLowerCase().includes(faq.question.toLowerCase())) {
+        //     foundFAQ = faq;
+        //     break;
+        // }
+        if (distance < 5) {
+            foundFAQ = faq;
+            break;
+        }
+    }
+
+	if (foundFAQ) {
+		const embed = new EmbedBuilder()
+			.setTitle(foundFAQ.question)
+			.setDescription(foundFAQ.answer)
+			.setColor('#00FF00')
+			.setTimestamp();
+
+		if (foundFAQ.link) {
+			embed.addFields(
+				{ name: 'For more details', value: foundFAQ.link });
+		}
+
+		embed.addFields({ name: 'Did you find this response helpful?', value: '👍 Yes | 👎 No' });
+
+		const reply = await msg.reply({
+			content: `${msg.member}, here is the answer to your question:`,
+			embeds: [embed]
+		});
+
+		// React with thumbs up and thumbs down.
+		await reply.react('👍');
+		await reply.react('👎');
+
+		// Create a reaction collector
+		const filter = (reaction: any, user: any) =>
+			['👍', '👎'].includes(reaction.emoji.name) && user.id === msg.author.id;
+		const collector = reply.createReactionCollector({ filter, time: 60000 });
+
+		collector.on('collect', async (reaction) => {
+			if (reaction.emoji.name === '👍') {
+				await msg.reply('Great! Glad you found it helpful!');
+			} else if (reaction.emoji.name === '👎') {
+				await msg.reply('Sorry that you didn’t find it helpful. The DevOps team will continue improving the answers to ensure satisfaction.');
+			}
+
+			// Lock reactions to avoid people SPAMMING REACTIONS!
+			await reply.reactions.removeAll();
+			collector.stop();
+		});
+	}
 }
 
 async function handleExpDetract(msg: Message | PartialMessage) {
