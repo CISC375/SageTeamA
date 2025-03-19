@@ -108,9 +108,32 @@ async function handleFAQResponse(msg: Message): Promise<void> {
 				{ name: 'For more details', value: foundFAQ.link });
 		}
 
-		await msg.reply({
+		embed.addFields({ name: 'Did you find this response helpful?', value: '👍 Yes | 👎 No' });
+
+		const reply = await msg.reply({
 			content: `${msg.member}, here is the answer to your question:`,
 			embeds: [embed]
+		});
+
+		// React with thumbs up and thumbs down.
+		await reply.react('👍');
+		await reply.react('👎');
+
+		// Create a reaction collector
+		const filter = (reaction: any, user: any) =>
+			['👍', '👎'].includes(reaction.emoji.name) && user.id === msg.author.id;
+		const collector = reply.createReactionCollector({ filter, time: 60000 });
+
+		collector.on('collect', async (reaction) => {
+			if (reaction.emoji.name === '👍') {
+				await msg.reply('Great! Glad you found it helpful!');
+			} else if (reaction.emoji.name === '👎') {
+				await msg.reply('Sorry that you didn’t find it helpful. The DevOps team will continue improving the answers to ensure satisfaction.');
+			}
+
+			// Lock reactions to avoid people SPAMMING REACTIONS!
+			await reply.reactions.removeAll();
+			collector.stop();
 		});
 	}
 }
