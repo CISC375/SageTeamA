@@ -1,7 +1,7 @@
 import { EmbedField, ChatInputCommandInteraction, EmbedBuilder, version as discordVersion, InteractionResponse } from 'discord.js';
 import prettyMilliseconds from 'pretty-ms';
 import { version as sageVersion } from '@root/package.json';
-import { BOT } from '@root/config';
+import { BOT } from '@root/src/pieces/config';
 import { Command } from '@lib/types/Command';
 
 export default class extends Command {

@@ -2,7 +2,7 @@ import { ApplicationCommandOptionData, ApplicationCommandOptionType, Application
 import { ADMIN_PERMS, STAFF_PERMS } from '@lib/permissions';
 import { SageUser } from '@lib/types/SageUser';
 import { DatabaseError } from '@lib/types/errors';
-import { DB } from '@root/config';
+import { DB } from '@root/src/pieces/config';
 import { Command } from '@lib/types/Command';
 
 export default class extends Command {

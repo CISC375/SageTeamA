@@ -1,6 +1,6 @@
 import { ADMIN_PERMS, STAFF_PERMS } from '@lib/permissions';
 import { Command } from '@lib/types/Command';
-import { BOT } from '@root/config';
+import { BOT } from '@root/src/pieces/config';
 import { EmbedBuilder, ApplicationCommandPermissions, ApplicationCommandOptionData, ChatInputCommandInteraction, ApplicationCommandOptionType,
 	InteractionResponse } from 'discord.js';
 

@@ -1,7 +1,7 @@
 import { Client, GuildMember, PartialGuildMember } from 'discord.js';
 import { SageUser } from '@lib/types/SageUser';
 import { DatabaseError } from '@lib/types/errors';
-import { DB, FIRST_LEVEL, GUILDS, ROLES } from '@root/config';
+import { DB, FIRST_LEVEL, GUILDS, ROLES } from '@root/src/pieces/config';
 
 async function memberAdd(member: GuildMember): Promise<void> {
 	if (member.guild.id !== GUILDS.MAIN) return;

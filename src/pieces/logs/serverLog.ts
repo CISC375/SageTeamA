@@ -18,7 +18,7 @@ import {
 	OverwriteType
 } from 'discord.js';
 import prettyMilliseconds from 'pretty-ms';
-import { GUILDS, CHANNELS } from '@root/config';
+import { GUILDS, CHANNELS } from '@root/src/pieces/config';
 
 async function processChannelCreate(channel: GuildChannel | DMChannel, serverLog: TextChannel): Promise<void> {
 	if (!('guild' in channel) || channel.guild.id !== GUILDS.MAIN) return;

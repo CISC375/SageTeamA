@@ -1,5 +1,5 @@
 import { ADMIN_PERMS } from '@lib/permissions';
-import { CHANNELS, DB, SEMESTER_ID } from '@root/config';
+import { CHANNELS, DB, SEMESTER_ID } from '@root/src/pieces/config';
 import { Command } from '@lib/types/Command';
 import { ApplicationCommandOptionData, ApplicationCommandPermissions, ButtonInteraction, CategoryChannel, ChatInputCommandInteraction, ActionRowBuilder, ButtonBuilder,
 	ApplicationCommandOptionType, InteractionResponse, ButtonStyle } from 'discord.js';

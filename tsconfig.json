@@ -21,7 +21,7 @@
         "module": "commonjs"
     },
 	"include": [
-		"config.ts",
+		"src/pieces/config.ts",
 		"src/**/*"
 	],
     "exclude": [

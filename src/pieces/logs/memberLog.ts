@@ -1,6 +1,6 @@
 import { Client, GuildMember, TextChannel, EmbedBuilder, PartialGuildMember, EmbedField, User, PartialUser, AuditLogEvent } from 'discord.js';
 import prettyMilliseconds from 'pretty-ms';
-import { GUILDS, CHANNELS } from '@root/config';
+import { GUILDS, CHANNELS } from '@root/src/pieces/config';
 
 async function processMemberAdd(member: GuildMember, channel: TextChannel): Promise<void> {
 	if (member.guild.id !== GUILDS.MAIN) return;

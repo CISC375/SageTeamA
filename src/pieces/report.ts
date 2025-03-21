@@ -3,7 +3,7 @@ import { schedule } from 'node-cron';
 import nodemailer from 'nodemailer';
 import moment from 'moment';
 import { SageUser } from '@lib/types/SageUser';
-import { DB, EMAIL } from '@root/config';
+import { DB, EMAIL } from '@root/src/pieces/config';
 import { Course } from '@lib/types/Course';
 import { Attachment } from 'nodemailer/lib/mailer';
 

@@ -1,4 +1,4 @@
-import { DB, GUILDS, ROLES } from '@root/config';
+import { DB, GUILDS, ROLES } from '@root/src/pieces/config';
 import { Client } from 'discord.js';
 import { SageUser } from '../lib/types/SageUser';
 import { schedule } from 'node-cron';

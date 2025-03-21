@@ -1,4 +1,4 @@
-import { DB, EMAIL } from '@root/config';
+import { DB, EMAIL } from '@root/src/pieces/config';
 import { ADMIN_PERMS, STAFF_PERMS } from '@lib/permissions';
 import { SageUser } from '@lib/types/SageUser';
 import { EmbedBuilder, ChatInputCommandInteraction, ApplicationCommandPermissions, ApplicationCommandOptionData, ApplicationCommandOptionType,

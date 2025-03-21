@@ -2,7 +2,7 @@ import { OverwriteResolvable, Guild, TextChannel, ApplicationCommandPermissions,
 	InteractionResponse, ChannelType } from 'discord.js';
 import { Course } from '@lib/types/Course';
 import { ADMIN_PERMS } from '@lib/permissions';
-import { DB, GUILDS, ROLES } from '@root/config';
+import { DB, GUILDS, ROLES } from '@root/src/pieces/config';
 import { Command } from '@lib/types/Command';
 import { updateDropdowns } from '@lib/utils/generalUtils';
 

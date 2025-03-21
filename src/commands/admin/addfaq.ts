@@ -9,7 +9,7 @@ import { ApplicationCommandPermissions,
 	ModalBuilder,
 	ActionRowBuilder,
 	Events } from 'discord.js';
-import { DB } from '@root/config';
+import { DB } from '@root/src/pieces/config';
 
 export default class extends Command {
 

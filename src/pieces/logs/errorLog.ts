@@ -1,7 +1,7 @@
 import { Client, TextChannel, EmbedBuilder, AttachmentBuilder } from 'discord.js';
 import { sendToFile } from '@root/src/lib/utils/generalUtils';
 import { CommandError } from '@lib/types/errors';
-import { CHANNELS } from '@root/config';
+import { CHANNELS } from '@root/src/pieces/config';
 
 async function register(bot: Client): Promise<void> {
 	const errLog = await bot.channels.fetch(CHANNELS.ERROR_LOG) as TextChannel;

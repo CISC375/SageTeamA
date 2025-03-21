@@ -1,4 +1,4 @@
-import { DB, MAINTAINERS } from '@root/config';
+import { DB, MAINTAINERS } from '@root/src/pieces/config';
 import { SageUser } from '@lib/types/SageUser';
 import { ChatInputCommandInteraction, InteractionResponse } from 'discord.js';
 import { DatabaseError } from '@lib/types/errors';

@@ -3,7 +3,7 @@ import { ApplicationCommandOptionData, ChatInputCommandInteraction, GuildChannel
 import { Course } from '@lib/types/Course';
 import { PVQuestion } from '@lib/types/PVQuestion';
 import { SageUser } from '@lib/types/SageUser';
-import { BOT, DB, MAINTAINERS } from '@root/config';
+import { BOT, DB, MAINTAINERS } from '@root/src/pieces/config';
 import { generateErrorEmbed, generateQuestionId } from '@lib/utils/generalUtils';
 import { Command } from '@lib/types/Command';
 

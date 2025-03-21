@@ -3,7 +3,7 @@ import consoleStamp from 'console-stamp';
 import { MongoClient } from 'mongodb';
 import { ApplicationCommandPermissions, Client, IntentsBitField, Partials, Team, ActivityType, ApplicationCommandPermissionType } from 'discord.js';
 import { readdirRecursive } from '@root/src/lib/utils/generalUtils';
-import { DB, BOT, PREFIX, GITHUB_TOKEN } from '@root/config';
+import { DB, BOT, PREFIX, GITHUB_TOKEN } from '@root/src/pieces/config';
 import { Octokit } from '@octokit/rest';
 import { version as sageVersion } from '@root/package.json';
 import { registerFont } from 'canvas';

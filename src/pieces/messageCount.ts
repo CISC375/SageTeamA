@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 import { Client, TextChannel, Role, Message, EmbedBuilder, PartialMessage, ThreadChannel, ChannelType } from 'discord.js';
 import { DatabaseError } from '@lib/types/errors';
-import { CHANNELS, DB, ROLES, GUILDS } from '@root/config';
+import { CHANNELS, DB, ROLES, GUILDS } from '@root/src/pieces/config';
 import { SageUser } from '@lib/types/SageUser';
 import { calcNeededExp } from '@lib/utils/generalUtils';
-import {levenshteinDistance } from '@lib/utils/levenshtein'
+import { levenshteinDistance } from '@lib/utils/levenshtein';
 
 const startingColor = 80;
 const greenIncrement = 8;
@@ -15,6 +15,20 @@ const countedChannelTypes = [
 	ChannelType.PublicThread,
 	ChannelType.PrivateThread
 ];
+
+// Interface for FAQ items
+interface FAQItem {
+	question: string;
+	answer: string;
+	category?: string;
+	link?: string;
+	[key: string]: any; // For any additional properties
+}
+
+// Interface for scored FAQ items
+interface ScoredFAQItem extends FAQItem {
+	score: number;
+}
 
 async function register(bot: Client): Promise<void> {
 	bot.on('messageCreate', async msg => {
@@ -56,9 +70,134 @@ async function countMessages(msg: Message): Promise<void> {
 	);
 }
 
-async function handleFAQResponse(msg: Message): Promise<void> {
-	if (msg.author.bot) return;
+// Helper function to determine if a message is likely a question
+function isQuestionLike(text: string): boolean {
+	const questionWords: string[] = ['who', 'what', 'where', 'when', 'why', 'how', 'can', 'could', 'would', 'should', 'is', 'are', 'does', 'do', 'did'];
+	const lowerText = text.toLowerCase();
 
+	// Check if the message starts with a question word
+	for (const word of questionWords) {
+		if (lowerText.startsWith(`${word} `) || lowerText.includes(` ${word} `)) {
+			return true;
+		}
+	}
+
+	// Additional patterns that suggest questions
+	const questionPatterns: string[] = [
+		'help', 'looking for', 'need', 'trying to', 'want to know', 'unsure', 'confused',
+		'assist', 'explain', 'show me', 'tell me', 'advise', 'having trouble',
+		'not sure', 'anyone know', 'help me'
+	];
+
+	for (const pattern of questionPatterns) {
+		if (lowerText.includes(pattern)) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+// Calculate text similarity between two strings (simple Jaccard similarity)
+function textSimilarity(text1: string, text2: string): number {
+	const set1 = new Set(text1.split(/\s+/));
+	const set2 = new Set(text2.split(/\s+/));
+
+	// Count common words
+	const intersection = new Set([...set1].filter(word => set2.has(word)));
+	const union = new Set([...set1, ...set2]);
+
+	// Calculate similarity
+	return intersection.size / union.size;
+}
+
+// Function to find relevant FAQs when no exact match is found
+function findRelevantFAQs(query: string, faqs: FAQItem[], limit = 3): FAQItem[] {
+	const normalizedQuery = query.toLowerCase().trim();
+
+	// Score each FAQ based on relevance
+	const scoredFAQs: ScoredFAQItem[] = faqs.map(faq => {
+		let score = 0;
+
+		// Score based on question similarity
+		const questionSimilarity = textSimilarity(normalizedQuery, faq.question.toLowerCase());
+		score += questionSimilarity * 10;
+
+		// Score based on category match
+		if (faq.category && normalizedQuery.includes(faq.category.toLowerCase())) {
+			score += 5;
+		}
+
+		// Extract keywords from the question
+		const keywords = faq.question.toLowerCase()
+			.split(/\s+/)
+			.filter(word => word.length > 3)
+			.filter(word => !['what', 'where', 'when', 'why', 'how', 'can', 'could', 'would', 'is', 'are', 'the', 'and', 'for'].includes(word));
+
+		// Score based on keyword matches
+		for (const keyword of keywords) {
+			if (normalizedQuery.includes(keyword)) {
+				score += 2;
+			}
+		}
+
+		// Score based on answer content similarity
+		if (faq.answer) {
+			const answerSimilarity = textSimilarity(normalizedQuery, faq.answer.toLowerCase());
+			score += answerSimilarity * 3;
+		}
+
+		return { ...faq, score };
+	});
+
+	// Filter FAQs with a minimum score and sort by score
+	return scoredFAQs
+		.filter(faq => faq.score > 0.1) // Minimum relevance threshold
+		.sort((a, b) => b.score - a.score)
+		.slice(0, limit)
+		.map(({ score, ...rest }) => rest as FAQItem); // Remove the score property
+}
+
+// Create an embed with relevant FAQs
+function createRelevantFAQsEmbed(faqs: FAQItem[]): EmbedBuilder {
+	const embed = new EmbedBuilder()
+		.setTitle('📚 Related FAQs')
+		.setColor('#3498db')
+		.setDescription('Here are some FAQs that might help answer your question:')
+		.setTimestamp();
+
+	// Add each FAQ to the embed
+	faqs.forEach((faq, index) => {
+		let answerText = faq.answer;
+
+		// Add link if available
+		if (faq.link && faq.link.trim() !== '' && faq.link !== 'undefined') {
+			answerText += `\n\n[More information](${faq.link})`;
+		}
+
+		// Add category if available
+		const namePrefix = faq.category ? `[${faq.category}] ` : '';
+
+		embed.addFields({
+			name: `${index + 1}. ${namePrefix}${faq.question}`,
+			value: answerText.substring(0, 1024) // Discord field value limit
+		});
+	});
+
+	return embed;
+}
+
+async function handleFAQResponse(msg: Message): Promise<void> {
+	if (msg.author.bot || msg.content.startsWith('s;')) return;
+
+	const userQuestion = msg.content.trim();
+	if (userQuestion.length < 5) return;
+
+	// Check if the message is likely a question
+	const isLikelyQuestion = userQuestion.endsWith('?') || isQuestionLike(userQuestion);
+	if (!isLikelyQuestion) return;
+
+	// Apply cooldown to prevent spam
 	const cooldown = 3 * 1000;
 	const cooldownKey = `faqCooldown_${msg.author.id}`;
 	const now = Date.now();
@@ -77,25 +216,25 @@ async function handleFAQResponse(msg: Message): Promise<void> {
 		{ upsert: true }
 	);
 
-	const userQuestion = msg.content.trim();
-	const faqs = await msg.client.mongo.collection(DB.FAQS).find().toArray();
+	// Get all FAQs from the database
+	const faqs = await msg.client.mongo.collection(DB.FAQ).find().toArray() as FAQItem[];
+	if (!faqs || faqs.length === 0) return;
 
-	let foundFAQ = null;
+	// First, try to find an exact or very close match using Levenshtein distance
+	let foundFAQ: FAQItem | null = null;
+	const LEVENSHTEIN_THRESHOLD = 5; // Adjust as needed
 
 	for (const faq of faqs) {
-        const distance = levenshteinDistance(userQuestion, faq.question);
+		const distance = levenshteinDistance(userQuestion.toLowerCase(), faq.question.toLowerCase());
 
-        // console.log(faq.question.toLowerCase());
-        // if (userQuestion.toLowerCase().includes(faq.question.toLowerCase())) {
-        //     foundFAQ = faq;
-        //     break;
-        // }
-        if (distance < 5) {
-            foundFAQ = faq;
-            break;
-        }
-    }
+		// If we find a close match, use it immediately
+		if (distance < LEVENSHTEIN_THRESHOLD) {
+			foundFAQ = faq;
+			break;
+		}
+	}
 
+	// If exact match found, respond with it
 	if (foundFAQ) {
 		const embed = new EmbedBuilder()
 			.setTitle(foundFAQ.question)
@@ -103,37 +242,27 @@ async function handleFAQResponse(msg: Message): Promise<void> {
 			.setColor('#00FF00')
 			.setTimestamp();
 
-		if (foundFAQ.link) {
+		if (foundFAQ.link && foundFAQ.link !== 'undefined') {
 			embed.addFields(
 				{ name: 'For more details', value: foundFAQ.link });
 		}
 
-		embed.addFields({ name: 'Did you find this response helpful?', value: '👍 Yes | 👎 No' });
-
-		const reply = await msg.reply({
+		await msg.reply({
 			content: `${msg.member}, here is the answer to your question:`,
 			embeds: [embed]
 		});
+		return;
+	}
 
-		// React with thumbs up and thumbs down.
-		await reply.react('👍');
-		await reply.react('👎');
+	// No exact match found, search for relevant FAQs
+	const relevantFAQs = findRelevantFAQs(userQuestion, faqs);
 
-		// Create a reaction collector
-		const filter = (reaction: any, user: any) =>
-			['👍', '👎'].includes(reaction.emoji.name) && user.id === msg.author.id;
-		const collector = reply.createReactionCollector({ filter, time: 60000 });
-
-		collector.on('collect', async (reaction) => {
-			if (reaction.emoji.name === '👍') {
-				await msg.reply('Great! Glad you found it helpful!');
-			} else if (reaction.emoji.name === '👎') {
-				await msg.reply('Sorry that you didn’t find it helpful. The DevOps team will continue improving the answers to ensure satisfaction.');
-			}
-
-			// Lock reactions to avoid people SPAMMING REACTIONS!
-			await reply.reactions.removeAll();
-			collector.stop();
+	// If relevant FAQs found, respond with them
+	if (relevantFAQs.length > 0) {
+		const embed = createRelevantFAQsEmbed(relevantFAQs);
+		await msg.reply({
+			content: `${msg.member}, I couldn't find an exact match, but here are some related FAQs that might help:`,
+			embeds: [embed]
 		});
 	}
 }

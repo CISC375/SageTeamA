@@ -1,4 +1,4 @@
-import { BOT, DB } from '@root/config';
+import { BOT, DB } from '@root/src/pieces/config';
 import { ApplicationCommandOptionData, ButtonInteraction, Client,
 	ChatInputCommandInteraction, ActionRowBuilder, EmbedBuilder, ApplicationCommandOptionType, InteractionResponse, ButtonBuilder, ButtonStyle } from 'discord.js';
 import parse from 'parse-duration';

@@ -7,7 +7,7 @@ import { Collection, Client, CommandInteraction, ApplicationCommand,
 import { isCmdEqual, readdirRecursive } from '@root/src/lib/utils/generalUtils';
 import { Command } from '@lib/types/Command';
 import { SageData } from '@lib/types/SageData';
-import { DB, GUILDS, MAINTAINERS, CHANNELS } from '@root/config';
+import { DB, GUILDS, MAINTAINERS, CHANNELS } from '@root/src/pieces/config';
 import { Course } from '../lib/types/Course';
 import { SageUser } from '../lib/types/SageUser';
 import { CommandError } from '../lib/types/errors';

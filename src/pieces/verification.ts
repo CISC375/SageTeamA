@@ -1,6 +1,6 @@
 import { Client, Guild, ModalSubmitInteraction } from 'discord.js';
 import { SageUser } from '@lib/types/SageUser';
-import { DB, GUILDS, ROLES } from '@root/config';
+import { DB, GUILDS, ROLES } from '@root/src/pieces/config';
 
 export async function verify(interaction: ModalSubmitInteraction, bot: Client, guild: Guild, entry: SageUser, givenHash: string): Promise<void> {
 	if (!entry.isVerified) {

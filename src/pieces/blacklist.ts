@@ -1,4 +1,4 @@
-import { BLACKLIST } from "@root/config";
+import { BLACKLIST } from "@root/src/pieces/config";
 import { Client, Message } from "discord.js";
 
 // I stole these from https://github.com/powercord-org/powercord-backend/blob/my-awesome-branch/packages/boat/src/modules/mod/automod.ts#L52

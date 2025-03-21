@@ -1,4 +1,4 @@
-import { CHANNELS, DB } from '@root/config';
+import { CHANNELS, DB } from '@root/src/pieces/config';
 import { ChannelType, Client, EmbedBuilder, TextChannel } from 'discord.js';
 import { schedule } from 'node-cron';
 import { Reminder } from '@lib/types/Reminder';

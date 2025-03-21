@@ -14,7 +14,7 @@ import {
 	TextInputBuilder,
 	TextInputStyle
 } from 'discord.js';
-import { DB } from '@root/config';
+import { DB } from '@root/src/pieces/config';
 
 export default class extends Command {
 
@@ -28,7 +28,7 @@ export default class extends Command {
 
 		// Retrieve distinct categories from the database
 		const categories = await interaction.client.mongo
-			.collection(DB.FAQS)
+			.collection(DB.FAQ)
 			.distinct('category');
 
 		// Extract top-level categories
@@ -105,7 +105,7 @@ export async function handleCategorySelection(
 
 	// Retrieve distinct categories from the database
 	const categories = await interaction.client.mongo
-		.collection(DB.FAQS)
+		.collection(DB.FAQ)
 		.distinct('category');
 
 	// Extract subcategories
@@ -163,7 +163,7 @@ async function showQuestions(
 
 	// Retrieve questions from the database for the selected category
 	const questions = await interaction.client.mongo
-		.collection(DB.FAQS)
+		.collection(DB.FAQ)
 		.find({ category })
 		.toArray();
 
@@ -243,7 +243,7 @@ export async function handleModifyQuestion(interaction) {
 
 	// Retrieve the question data from the database
 	const questionData = await interaction.client.mongo
-		.collection(DB.FAQS)
+		.collection(DB.FAQ)
 		.findOne({ question: selectedQuestion });
 
 	if (!questionData) {
@@ -319,7 +319,7 @@ export async function handleModalSubmit(interaction) {
 
 		// Update the FAQ in the database with the new values
 		const result = await interaction.client.mongo
-			.collection(DB.FAQS)
+			.collection(DB.FAQ)
 			.updateOne(
 				{ question: oldQuestion },
 				{
