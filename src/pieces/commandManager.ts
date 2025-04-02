@@ -1,9 +1,13 @@
-import { Collection, Client, CommandInteraction, ApplicationCommand,
+import {
+	Collection, Client, CommandInteraction, ApplicationCommand,
 	GuildMember, SelectMenuInteraction,
 	ModalSubmitInteraction, TextChannel, GuildMemberRoleManager,
 	ButtonInteraction, ModalBuilder, TextInputBuilder, ActionRowBuilder,
 	ModalActionRowComponentBuilder, ApplicationCommandType, ApplicationCommandDataResolvable, ChannelType, ApplicationCommandPermissionType, TextInputStyle,
-	ChatInputCommandInteraction } from 'discord.js';
+	ChatInputCommandInteraction,
+	PermissionResolvable,
+	EmbedBuilder
+} from 'discord.js';
 import { isCmdEqual, readdirRecursive } from '@root/src/lib/utils/generalUtils';
 import { Command } from '@lib/types/Command';
 import { SageData } from '@lib/types/SageData';
@@ -140,7 +144,7 @@ async function handleModalBuilder(interaction: ModalSubmitInteraction, bot: Clie
 			await verify(interaction, bot, guild, entry, givenHash);
 			const enrollStr = entry.courses.length > 0
 				? `You have been automatically enrolled in CISC ${entry.courses[0]}. To enroll in more courses or to unenroll from your current course,` +
-			` go to <#${CHANNELS.ROLE_SELECT}> and use the proper dropdown menu.`
+				` go to <#${CHANNELS.ROLE_SELECT}> and use the proper dropdown menu.`
 				: '';
 			interaction.reply({ content: `Thank you for verifying! You can now access the rest of the server. ${enrollStr}`, ephemeral: true });
 			break;
@@ -263,6 +267,14 @@ async function runCommand(interaction: ChatInputCommandInteraction, bot: Client)
 			content: 'This command must be run in DMs, not public channels',
 			ephemeral: true
 		});
+	}
+
+	if (!command.permissions.every(permission => interaction.memberPermissions.has(permission.id as PermissionResolvable))) {
+		const errorEmbed = new EmbedBuilder()
+			.setColor('#FF0000')
+			.setTitle('Error')
+			.setDescription('You do not have permission to use this command.');
+		return interaction.reply({ content: '', embeds: [errorEmbed], ephemeral: true });
 	}
 
 	if (bot.commands.get(interaction.commandName).run !== undefined) {
