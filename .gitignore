@@ -6,7 +6,8 @@ src/commands/admin/eval.ts
 config.ts
 binding.gyp
 package-lock.json
-build
+build/*
+
 
 # macOS stuff
 .DS_Store
