@@ -1,12 +1,11 @@
-import { ApplicationCommandOptionData, ApplicationCommandOptionType, ApplicationCommandPermissions, ChatInputCommandInteraction, EmbedBuilder, InteractionResponse } from 'discord.js';
+import { ApplicationCommandOptionData, ApplicationCommandOptionType, ChatInputCommandInteraction, EmbedBuilder, InteractionResponse } from 'discord.js';
 import { Command } from '@lib/types/Command';
-import { DB, CHANNELS } from '@root/config';
+import { DB } from '@root/config';
 import { ADMIN_PERMS } from '@lib/permissions';
-import { BotResponseLog } from '@lib/utils/responseLogger';
 
 export default class extends Command {
-    description = 'View statistics about bot responses to user questions';
-    permissions = [ADMIN_PERMS];
+    description = 'View statistics about questions asked to the bot';
+    permissions = [ADMIN_PERMS]; // This ensures only Admin roles can use the command
     options: ApplicationCommandOptionData[] = [
         {
             name: 'timeframe',
@@ -34,13 +33,13 @@ export default class extends Command {
         },
         {
             name: 'user',
-            description: 'View responses for a specific user',
+            description: 'View questions from a specific user',
             type: ApplicationCommandOptionType.User,
             required: false
         },
         {
             name: 'type',
-            description: 'Filter by response type',
+            description: 'Filter by question type',
             type: ApplicationCommandOptionType.String,
             required: false,
             choices: [
@@ -57,6 +56,18 @@ export default class extends Command {
                     value: 'other'
                 }
             ]
+        },
+        {
+            name: 'limit',
+            description: 'Limit the number of top questions shown',
+            type: ApplicationCommandOptionType.Integer,
+            required: false
+        },
+        {
+            name: 'include_commands',
+            description: 'Include admin command queries in results',
+            type: ApplicationCommandOptionType.Boolean,
+            required: false,
         }
     ];
 
@@ -64,9 +75,16 @@ export default class extends Command {
         const timeframe = interaction.options.getString('timeframe') || 'all';
         const user = interaction.options.getUser('user');
         const type = interaction.options.getString('type');
+        const limit = interaction.options.getInteger('limit') || 10;
+        const includeCommands = interaction.options.getBoolean('include_commands') || false;
 
         // Build query based on options
         const query: any = {};
+
+        // By default, exclude questions that are admin commands (those starting with "/botresponses", etc.)
+        if (!includeCommands) {
+            query.questionContent = { $not: /^\/(?:botresponses|exportresponses)/ };
+        }
 
         // Add timeframe filter
         if (timeframe !== 'all') {
@@ -85,12 +103,12 @@ export default class extends Command {
                     break;
             }
             
-            query.timestamp = { $gte: startDate };
+            query.firstAsked = { $gte: startDate };
         }
 
         // Add user filter
         if (user) {
-            query.userId = user.id;
+            query['instances.userId'] = user.id;
         }
 
         // Add type filter
@@ -98,64 +116,127 @@ export default class extends Command {
             query.responseType = type;
         }
 
-        // Get the responses from the database
-        const responses: BotResponseLog[] = await interaction.client.mongo.collection(DB.BOT_RESPONSES).find(query).toArray();
+        // Get the questions from the database, sorted by count in descending order
+        const questions = await interaction.client.mongo.collection(DB.BOT_RESPONSES)
+            .find(query)
+            .sort({ count: -1 })
+            .limit(limit)
+            .toArray();
 
-        if (responses.length === 0) {
+        if (questions.length === 0) {
             return interaction.reply({
-                content: 'No bot responses found for the selected criteria.',
+                content: 'No questions found for the selected criteria.',
                 ephemeral: true
             });
         }
 
         // Calculate statistics
-        const totalResponses = responses.length;
-        const uniqueUsers = new Set(responses.map(r => r.userId)).size;
-        const responseTypes = {
-            faq: responses.filter(r => r.responseType === 'faq').length,
-            command: responses.filter(r => r.responseType === 'command').length,
-            other: responses.filter(r => r.responseType === 'other').length
-        };
+        let totalQuestions = 0;
+        try {
+            const countResult = await interaction.client.mongo.collection(DB.BOT_RESPONSES)
+                .aggregate([
+                    { $match: query },
+                    { $count: "total" }
+                ]).toArray();
+            
+            totalQuestions = countResult.length > 0 ? countResult[0].total : 0;
+        } catch (error) {
+            console.error('Error counting documents:', error);
+        }
+            
+        // Calculate total instances (ensuring counts are numbers)
+        const totalInstances = questions.reduce((sum, q) => sum + (typeof q.count === 'number' ? q.count : 0), 0);
+        
+        // Create a set of unique users
+        const uniqueUsers = new Set();
+        questions.forEach(q => {
+            if (q.instances && Array.isArray(q.instances)) {
+                q.instances.forEach(i => uniqueUsers.add(i.userId));
+            }
+        });
 
-        // Calculate response time distribution
-        const responseTimeDistribution = {
+        // Calculate time distribution
+        const timeDistribution = {
             morning: 0,    // 6am - 12pm
             afternoon: 0,  // 12pm - 6pm
             evening: 0,    // 6pm - 12am
             night: 0       // 12am - 6am
         };
 
-        responses.forEach(response => {
-            const hour = new Date(response.timestamp).getHours();
-            if (hour >= 6 && hour < 12) {
-                responseTimeDistribution.morning++;
-            } else if (hour >= 12 && hour < 18) {
-                responseTimeDistribution.afternoon++;
-            } else if (hour >= 18 && hour < 24) {
-                responseTimeDistribution.evening++;
-            } else {
-                responseTimeDistribution.night++;
+        questions.forEach(question => {
+            if (question.instances && Array.isArray(question.instances)) {
+                question.instances.forEach(instance => {
+                    // Make sure timestamp is valid
+                    if (instance.timestamp) {
+                        const timestamp = new Date(instance.timestamp);
+                        if (!isNaN(timestamp.getTime())) {
+                            const hour = timestamp.getHours();
+                            if (hour >= 6 && hour < 12) {
+                                timeDistribution.morning++;
+                            } else if (hour >= 12 && hour < 18) {
+                                timeDistribution.afternoon++;
+                            } else if (hour >= 18 && hour < 24) {
+                                timeDistribution.evening++;
+                            } else {
+                                timeDistribution.night++;
+                            }
+                        }
+                    }
+                });
             }
         });
 
         // Create embed
         const embed = new EmbedBuilder()
-            .setTitle('Bot Response Statistics')
+            .setTitle('Question Statistics')
             .setColor('#00FF00')
-            .setTimestamp()
-            .addFields(
-                { name: 'Total Responses', value: totalResponses.toString(), inline: true },
-                { name: 'Unique Users', value: uniqueUsers.toString(), inline: true },
-                { name: '\u200B', value: '\u200B', inline: true }, // Empty field for formatting
-                { name: 'FAQ Responses', value: responseTypes.faq.toString(), inline: true },
-                { name: 'Command Responses', value: responseTypes.command.toString(), inline: true },
-                { name: 'Other Responses', value: responseTypes.other.toString(), inline: true },
-                { name: 'Time Distribution', value: 
-                    `Morning (6am-12pm): ${responseTimeDistribution.morning}\n` +
-                    `Afternoon (12pm-6pm): ${responseTimeDistribution.afternoon}\n` +
-                    `Evening (6pm-12am): ${responseTimeDistribution.evening}\n` +
-                    `Night (12am-6am): ${responseTimeDistribution.night}`, inline: false }
-            );
+            .setTimestamp();
+
+        // Add summary fields
+        embed.addFields(
+            { name: 'Total Unique Questions', value: totalQuestions.toString(), inline: true },
+            { name: 'Total Question Instances', value: totalInstances.toString(), inline: true },
+            { name: 'Unique Users', value: uniqueUsers.size.toString(), inline: true }
+        );
+
+        // Add time distribution
+        embed.addFields({
+            name: 'Time Distribution', 
+            value: 
+                `Morning (6am-12pm): ${timeDistribution.morning}\n` +
+                `Afternoon (12pm-6pm): ${timeDistribution.afternoon}\n` +
+                `Evening (6pm-12am): ${timeDistribution.evening}\n` +
+                `Night (12am-6am): ${timeDistribution.night}`,
+            inline: false 
+        });
+
+        // Add top questions
+        let topQuestionsText = '';
+        questions.forEach((q, index) => {
+            // Ensure counts are valid
+            const count = typeof q.count === 'number' ? q.count : 0;
+            
+            // Ensure firstAsked date is valid
+            let dateStr = 'Unknown';
+            try {
+                if (q.firstAsked) {
+                    const date = new Date(q.firstAsked);
+                    if (!isNaN(date.getTime())) {
+                        dateStr = date.toLocaleDateString();
+                    }
+                }
+            } catch (e) {
+                console.error('Error formatting date:', e);
+            }
+            
+            topQuestionsText += `${index + 1}. "${q.questionContent.substring(0, 50)}${q.questionContent.length > 50 ? '...' : ''}" - Asked ${count} times (first: ${dateStr})\n`;
+        });
+
+        embed.addFields({
+            name: `Top ${questions.length} Questions`,
+            value: topQuestionsText || 'No questions found',
+            inline: false
+        });
 
         // Add timeframe information
         if (timeframe !== 'all') {

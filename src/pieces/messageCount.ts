@@ -5,7 +5,7 @@ import { CHANNELS, DB, ROLES, GUILDS } from '@root/config';
 import { SageUser } from '@lib/types/SageUser';
 import { calcNeededExp } from '@lib/utils/generalUtils';
 import { levenshteinDistance } from '@lib/utils/levenshtein';
-import { logMessageResponse } from '@lib/utils/responseLogger';
+import { logMessageQuestion } from '@lib/utils/responseLogger';
 
 const startingColor = 80;
 const greenIncrement = 8;
@@ -79,6 +79,10 @@ async function handleFAQResponse(msg: Message): Promise<void> {
 	);
 
 	const userQuestion = msg.content.trim();
+	
+	// Log the question right away, regardless of whether we find an FAQ match
+	await logMessageQuestion(msg, 'faq');
+	
 	const faqs = await msg.client.mongo.collection(DB.FAQS).find().toArray();
 
 	let foundFAQ = null;
@@ -86,11 +90,6 @@ async function handleFAQResponse(msg: Message): Promise<void> {
 	for (const faq of faqs) {
         const distance = levenshteinDistance(userQuestion, faq.question);
 
-        // console.log(faq.question.toLowerCase());
-        // if (userQuestion.toLowerCase().includes(faq.question.toLowerCase())) {
-        //     foundFAQ = faq;
-        //     break;
-        // }
         if (distance < 5) {
             foundFAQ = faq;
             break;
@@ -116,20 +115,6 @@ async function handleFAQResponse(msg: Message): Promise<void> {
 			embeds: [embed]
 		});
 
-		// Log the bot response
-		await logMessageResponse(
-			msg,
-			foundFAQ.answer,
-			'faq',
-			{
-				faqQuestion: foundFAQ.question,
-				embedTitle: foundFAQ.question,
-				embedDescription: foundFAQ.answer,
-				link: foundFAQ.link || null,
-				responseMessageId: reply.id
-			}
-		);
-
 		// React with thumbs up and thumbs down.
 		await reply.react('👍');
 		await reply.react('👎');
@@ -148,19 +133,6 @@ async function handleFAQResponse(msg: Message): Promise<void> {
 			} else if (reaction.emoji.name === '👎') {
 				feedbackResponse = 'Sorry that you didn\'t find it helpful. The DevOps team will continue improving the answers to ensure satisfaction.';
 				await msg.reply(feedbackResponse);
-			}
-
-			// Log the feedback response
-			if (feedbackResponse) {
-				await logMessageResponse(
-					msg,
-					feedbackResponse,
-					'faq',
-					{
-						feedbackType: reaction.emoji.name,
-						originalFaqQuestion: foundFAQ.question
-					}
-				);
 			}
 
 			// Lock reactions to avoid people SPAMMING REACTIONS!
