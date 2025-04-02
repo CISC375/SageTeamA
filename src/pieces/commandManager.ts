@@ -12,6 +12,7 @@ import { Course } from '../lib/types/Course';
 import { SageUser } from '../lib/types/SageUser';
 import { CommandError } from '../lib/types/errors';
 import { verify } from '../pieces/verification';
+import { logInteractionResponse } from '@lib/utils/responseLogger';
 
 const DELETE_DELAY = 10000;
 
@@ -259,10 +260,25 @@ async function runCommand(interaction: ChatInputCommandInteraction, bot: Client)
 	const command = bot.commands.get(interaction.commandName);
 
 	if (interaction.channel.type === ChannelType.GuildText && command.runInGuild === false) {
-		return interaction.reply({
-			content: 'This command must be run in DMs, not public channels',
+		const responseContent = 'This command must be run in DMs, not public channels';
+		const response = await interaction.reply({
+			content: responseContent,
 			ephemeral: true
 		});
+		
+		// Log the error response
+		await logInteractionResponse(
+			interaction,
+			responseContent,
+			'command',
+			{
+				command: interaction.commandName,
+				error: 'Command must be run in DMs',
+				success: false
+			}
+		);
+		
+		return response;
 	}
 
 	if (bot.commands.get(interaction.commandName).run !== undefined) {
@@ -284,17 +300,95 @@ async function runCommand(interaction: ChatInputCommandInteraction, bot: Client)
 
 		const failMessages = ['HTTP 401: Unauthorized', `I'm sorry ${interaction.user.username}, I'm afraid I can't do that.`,
 			'Username is not in the sudoers file. This incident will be reported.', `I'm sorry ${interaction.user.username}, but you need sigma nine clearance for that.`];
-		if (!success) return interaction.reply(failMessages[Math.floor(Math.random() * failMessages.length)]);
+		
+		if (!success) {
+			const responseContent = failMessages[Math.floor(Math.random() * failMessages.length)];
+			const response = await interaction.reply(responseContent);
+			
+			// Log the permission denied response
+			await logInteractionResponse(
+				interaction,
+				responseContent,
+				'command',
+				{
+					command: interaction.commandName,
+					error: 'Permission denied',
+					success: false
+				}
+			);
+			
+			return response;
+		}
 
 		try {
+			// Create a proxy for the reply method to intercept and log responses
+			const originalReply = interaction.reply;
+			interaction.reply = async function(options) {
+				const result = await originalReply.call(this, options);
+				
+				// Extract content from options for logging
+				let responseContent = '';
+				if (typeof options === 'string') {
+					responseContent = options;
+				} else if (options.content) {
+					responseContent = options.content;
+				} else if (options.embeds && options.embeds.length > 0) {
+					responseContent = JSON.stringify({
+						title: options.embeds[0].data.title,
+						description: options.embeds[0].data.description
+					});
+				}
+				
+				// Log the successful command response
+				await logInteractionResponse(
+					interaction,
+					responseContent,
+					'command',
+					{
+						command: interaction.commandName,
+						success: true,
+						isEphemeral: options.ephemeral === true
+					}
+				);
+				
+				return result;
+			};
+			
 			bot.commands.get(interaction.commandName).run(interaction)
-				?.catch(async (error: Error) => { // Idk if this is needed now, but keeping in case removing it breaks stuff...
+				?.catch(async (error: Error) => {
 					bot.emit('error', new CommandError(error, interaction));
-					interaction.reply({ content: `An error occurred. ${MAINTAINERS} have been notified.`, ephemeral: true });
+					const errorResponse = `An error occurred. ${MAINTAINERS} have been notified.`;
+					interaction.reply({ content: errorResponse, ephemeral: true });
+					
+					// Log the error response
+					await logInteractionResponse(
+						interaction,
+						errorResponse,
+						'command',
+						{
+							command: interaction.commandName,
+							error: error.message,
+							success: false
+						}
+					);
 				});
 		} catch (error) {
 			bot.emit('error', new CommandError(error, interaction));
-			interaction.reply({ content: `An error occurred. ${MAINTAINERS} have been notified.`, ephemeral: true });
+			const errorResponse = `An error occurred. ${MAINTAINERS} have been notified.`;
+			interaction.reply({ content: errorResponse, ephemeral: true });
+			
+			// Log the error response
+			await logInteractionResponse(
+				interaction,
+				errorResponse,
+				'command',
+				{
+					command: interaction.commandName,
+					error: error.message,
+					success: false
+				}
+			);
+			
 			console.log(error.errors);
 		}
 	}

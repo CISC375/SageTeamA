@@ -4,7 +4,8 @@ import { DatabaseError } from '@lib/types/errors';
 import { CHANNELS, DB, ROLES, GUILDS } from '@root/config';
 import { SageUser } from '@lib/types/SageUser';
 import { calcNeededExp } from '@lib/utils/generalUtils';
-import {levenshteinDistance } from '@lib/utils/levenshtein'
+import { levenshteinDistance } from '@lib/utils/levenshtein';
+import { logMessageResponse } from '@lib/utils/responseLogger';
 
 const startingColor = 80;
 const greenIncrement = 8;
@@ -115,6 +116,20 @@ async function handleFAQResponse(msg: Message): Promise<void> {
 			embeds: [embed]
 		});
 
+		// Log the bot response
+		await logMessageResponse(
+			msg,
+			foundFAQ.answer,
+			'faq',
+			{
+				faqQuestion: foundFAQ.question,
+				embedTitle: foundFAQ.question,
+				embedDescription: foundFAQ.answer,
+				link: foundFAQ.link || null,
+				responseMessageId: reply.id
+			}
+		);
+
 		// React with thumbs up and thumbs down.
 		await reply.react('👍');
 		await reply.react('👎');
@@ -125,10 +140,27 @@ async function handleFAQResponse(msg: Message): Promise<void> {
 		const collector = reply.createReactionCollector({ filter, time: 60000 });
 
 		collector.on('collect', async (reaction) => {
+			let feedbackResponse = '';
+			
 			if (reaction.emoji.name === '👍') {
-				await msg.reply('Great! Glad you found it helpful!');
+				feedbackResponse = 'Great! Glad you found it helpful!';
+				await msg.reply(feedbackResponse);
 			} else if (reaction.emoji.name === '👎') {
-				await msg.reply('Sorry that you didn’t find it helpful. The DevOps team will continue improving the answers to ensure satisfaction.');
+				feedbackResponse = 'Sorry that you didn\'t find it helpful. The DevOps team will continue improving the answers to ensure satisfaction.';
+				await msg.reply(feedbackResponse);
+			}
+
+			// Log the feedback response
+			if (feedbackResponse) {
+				await logMessageResponse(
+					msg,
+					feedbackResponse,
+					'faq',
+					{
+						feedbackType: reaction.emoji.name,
+						originalFaqQuestion: foundFAQ.question
+					}
+				);
 			}
 
 			// Lock reactions to avoid people SPAMMING REACTIONS!
