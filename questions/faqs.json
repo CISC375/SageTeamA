@@ -1,140 +1,140 @@
 [
-  {
-    "question": "Who can I reach out to about the JP Morgan - CCOR Fair Lending Quant Modeling Analyst position?",
-    "answer": "Send your resume to manni.yu@jpmchase.com",
-    "category": "Job/Interview",
-    "link": "https://jobs.cis.udel.edu/home"
-  },
-  {
-    "question": "What are the requirements for a Software Developer at Monterey Enterprises?",
-    "answer": "Bachelor's degree or higher in computer science or equivalent, 1 to 3 years experience in software development, including internships, Ability to thrive in an environment where problem-solving, communication, reliability, and commitment are paramount, Suitable home office workspace, Ability to work full-time Monday through Friday 5:30 AM to 2:30 PM EPT with a 7-day week of on-call time every third week, Located in or relocate to Northern Delaware or surrounding areas, C# .NET in Visual Studio or transferable language/IDE experience, MS t-SQL Programming with SQL Server or similar database experience, WPF/XAML/WinForms or similar desktop UI experience",
-    "category": "Job/Interview",
-    "link": "https://jobs.cis.udel.edu/home"
-  },
-  {
-    "question": "Where can I learn more about the The Neunuebel Neuroscience Lab?",
-    "answer": "https://jneunuebel6.wixsite.com/psychlab",
-    "category": "Job/Interview",
-    "link": "https://jobs.cis.udel.edu/home"
-  },
-  {
-    "question": "Where can I find full time and internship opportunities in software development?",
-    "answer": "Go to https://jobs.cis.udel.edu/home and to find any positions that may offer what you are looking for",
-    "category": "Job/Interview",
-    "link": "https://jobs.cis.udel.edu/home"
-  },
-  {
-    "question": "The class or section I want is full",
-    "answer": "If you find that the course you want to take (or a section of it) is full, please place yourself on the wait list. This will give all students a chance to place themselves on the wait lists of their desired courses. We will then consider them in priority order based on their status (CS majors or other majors, senior/junior/sophomore/freshman) and on their need for the course, e.g. is the course needed for a specific degree requirement, or is the student close to graduation. Wait lists are processed periodically all the way until the semester starts.",
-    "category": "Class Registration",
-    "link": "https://www.cis.udel.edu/academics/course-registration-information/#:~:text=Which%20goes%20with%20which%3F,the%20Registrar%20course%20guide%20list."
-  },
-  {
-    "question": "I am facing issues registering for a course. Who can I contact?",
-    "answer": "Some courses, sections, or seats are reserved for certain populations (often majors, but sometimes students from other majors, or for freshmen during New Student Orientation in the summer). These reservations are not always visible in the registration process. Most of our lower-level courses (CISC220 and below) become available to all students after all registration appointments have completed (this semester, that date is Friday, November 18). So check back on or after that date to see if you can register.",
-    "category": "Class Registration",
-    "link": "https://www.udel.edu/academics/registrar/students/grading-registration/registration-faqs/#time"
-  },
-  {
-    "question": "I can't register for a course: prerequisite error",
-    "answer": "Carefully check the prerequisites, either by looking up the course online or checking the catalog. Carefully check your transcript under UDSIS to see if it shows that you have the necessary coursework. Some of our courses require a minimum grade such as C- in the prerequisite. If you took the course at another institution, verify that the transfer-of-credit worked properly. If you need coursework from an institution evaluated, see the Registrar’s page on Transfer of Credit (www.udel.edu/transfercredit) . If you think that everything is in the system correctly but you still can’t get in, complete our Web form.",
-    "category": "Class Registration",
-    "link": "https://www.cis.udel.edu/academics/course-registration-information/#:~:text=Which%20goes%20with%20which%3F,the%20Registrar%20course%20guide%20list."
-  },
-  {
-    "question": "I am on a course wait list but I am receiving emails that there was an error with my enrollment",
-    "answer": "These emails are sent by the Registrar’s Office when an automated job runs every night looking to see if students can be moved from the wait lists into the courses. It can be disconcerting to receive these emails, but please be aware that these emails are not under the control of the CIS Department. They can be safely ignored by you. Your position on the wait list is safe and you have not been removed from it. YOU DO NOT NEED TO DO ANYTHING WHEN YOU RECEIVE THESE EMAILS. PLEASE DO NOT SEND US EMAIL AND PLEASE DO NOT CONTACT THE CIS DEPARTMENT because there is nothing we can do about them.",
-    "category": "Class Registration",
-    "link": "https://www.cis.udel.edu/academics/course-registration-information/#:~:text=Which%20goes%20with%20which%3F,the%20Registrar%20course%20guide%20list."
-  },
-  {
-    "question": "Can you tell me what is my position on the wait list for a course",
-    "answer": "We are sorry but we cannot tell you your wait list position. Wait lists are constantly shuffled based on the priority of a student. For this reason, your position may change over time. The position you had when you initially got on the wait list is meaningless because that is not the order in which we process the wait lists. We also cannot predict your chances of getting into a course. That depends not only on your wait list position but also on how many seats become available in the course. We have no way of predicting whether or not any students will drop out from it. Our sincere advice to you is to have a Plan B in case you are not able to get into the course.",
-    "category": "Class Registration",
-    "link": "https://www.cis.udel.edu/academics/course-registration-information/#:~:text=Which%20goes%20with%20which%3F,the%20Registrar%20course%20guide%20list."
-  },
-  {
-    "question": "I need to get approval to substitute a course or a degree requirement",
-    "answer": "If you need a course substitution, need waiver or substitution of a degree requirement, or other issues concerned with the requirements of your major or minor, then you should fill the CIS Degree Requirement Substitution Form (https://forms.cis.udel.edu/user/form/5cdc9d576ea09a0490e925ba)",
-    "category": "Class Registration",
-    "link": "https://www.cis.udel.edu/academics/course-registration-information/#:~:text=Which%20goes%20with%20which%3F,the%20Registrar%20course%20guide%20list."
-  },
-  {
-    "question": "Do I need to register for a lecture as well as a lab? Which goes with which?",
-    "answer": "In classes with a lab, you register for the lab and it will automatically register you in the corresponding lecture. (All classes have a lecture component). The easiest way to see what lab sections go with what lecture is to look at the Registrar course guide list. The coupling between components is mandatory for computer science courses. That is, you cannot “cherry-pick” the lecture and lab—you must pick the ones that go together.",
-    "category": "Class Registration",
-    "link": "https://www.cis.udel.edu/academics/course-registration-information/#:~:text=Which%20goes%20with%20which%3F,the%20Registrar%20course%20guide%20list."
-  },
-  {
-    "question": "There is no instructor name for the course I want to take",
-    "answer": "Instructors for certain classes are not always determined until after the open registration period. Instructor names will be added as permanent assignments are determined.",
-    "category": "Class Registration",
-    "link": "https://www.cis.udel.edu/academics/course-registration-information/#:~:text=Which%20goes%20with%20which%3F,the%20Registrar%20course%20guide%20list."
-  },
-  {
-    "question": "Additional Registrar Help Page for Course Registration",
-    "answer": "For additional registration help, please go to the following Registrar Help Page: http://www1.udel.edu/registrar/course-info-registration/register-for-classes/reghelp.html#time",
-    "category": "Class Registration",
-    "link": "https://www.cis.udel.edu/academics/course-registration-information/#:~:text=Which%20goes%20with%20which%3F,the%20Registrar%20course%20guide%20list."
-  },
-  {
-    "question": "How can I find out who my advisor is?",
-    "answer": "Check on the UDSIS system. The CIS department no longer keeps separate advisor records. More information about advisors can be located at Advisor info.",
-    "category": "General",
-    "link": "https://www.cis.udel.edu/academics/undergraduate-programs/undergraduate-faqs/"
-  },
-  {
-    "question": "I'm having trouble reaching my teacher/advisor. What can I do?",
-    "answer": "There are several ways you can reach your Professor, Instructor or Advisor: Send an email. Call on the phone. Drop by his/her office. Visit during office hours. Faculty members often receive a huge volume of email. Sometimes they will reply promptly to email and sometimes they are unable to reply as promptly as you would like. If you don’t get a response in the time frame you need, please use one of the options above to reach your teacher/advisor. Finally, in desperation, you can contact the CIS Undergraduate Coordinator, Samantha Fowle at 302-831-2712 or samfowle@udel.edu and she will help you to try to contact your teacher/adviser.",
-    "category": "General",
-    "link": "https://www.cis.udel.edu/academics/undergraduate-programs/undergraduate-faqs/"
-  },
-  {
-    "question": "Please give me permission to take a UD online course this term",
-    "answer": "The CIS department policy is not to authorize online courses during fall and spring semesters. The added benefits to learning from live interactions outweigh the convenience online courses may provide.",
-    "category": "General",
-    "link": "https://www.cis.udel.edu/academics/undergraduate-programs/undergraduate-faqs/"
-  },
-  {
-    "question": "Can I get a bachelor's degree and master's degree in computer science in 5 years?",
-    "answer": "If you are up to the challenge, yes! The MS degree requires 10 courses beyond the undergraduate work. Normally this is done over 1.5 to 2 years. Graduate students typically take 2 or 3 courses per term, depending on such variables as teaching assistant or research assistant work. Two things allow you to design a 5 year program: (1) With permission and prerequisites, you can take some graduate courses while still an undergraduate. (2) You can take 4 courses a term as a graduate student. It is not for the faint of heart, but it is allowed and doable. A 5 year program requires advanced planning. You should start discussing it with your advisor at end of sophomore year. Consult the catalog and dept web page about the MS program. Admission to the graduate program isn’t determined until spring of your senior year. If there is serious doubt about getting admitted, you probably shouldn’t be packing it into 5 years anyway. Note: a graduate course taken in place of a related undergraduate course to meet a major requirement cannot also count toward the graduate program.",
-    "category": "General",
-    "link": "https://www.cis.udel.edu/academics/undergraduate-programs/undergraduate-faqs/"
-  },
-  {
-    "question": "What minimum grade must I get in Math 210?",
-    "answer": "BS in CS majors must get C- or better in Math 210, because that grade level is an enforced prerequisite to the required course CISC303. INSY majors and BA in CS majors must get D- or better. The BA requires a C- or better in major courses. This applies to the CISC required courses, but not to the required Math courses(210 and 241). A student in any major who wishes to take CISC 303/304 must have the C- or better in Math 210.",
-    "category": "General",
-    "link": "https://www.cis.udel.edu/academics/undergraduate-programs/undergraduate-faqs/"
-  },
-  {
-    "question": "Can I take MISY 160 as a free elective?`",
-    "answer": "No. Students in CISC (or any student who takes any CISC course beyond 101) can no longer take MISY 160, CISC 101, or FREC 135 for credit. If you took one of these courses BEFORE changing majors or taking an advanced CISC course, then it will still count as a free elective.",
-    "category": "General",
-    "link": "https://www.cis.udel.edu/academics/undergraduate-programs/undergraduate-faqs/"
-  },
-  {
-    "question": "(Current Students) How do I apply for a Major in CIS?",
-    "answer": "",
-    "category": "General",
-    "link": "https://www.cis.udel.edu/academics/undergraduate-programs/undergraduate-faqs/"
-  },
-  {
-    "question": "How do I add a minor?",
-    "answer": "The CISC Department processes all applications for the computer science minor and the bioinformatics minor through the online application form at http://www.udel.edu/udsis-student. Before applying for a computer science or bioinformatics minor, students must have earned a grade of B- or better in CISC-106 or CISC-108 or CISC-181. The minor is restricted due to program capacity limitations. For advice on the the elective course choices of the minor, contact cis-ugradprgm@udel.edu.",
-    "category": "General",
-    "link": "https://www.cis.udel.edu/academics/undergraduate-programs/undergraduate-faqs/"
-  },
-  {
-    "question": "What are some useful resources I should know about?",
-    "answer": "Go to https://www.cis.udel.edu/academics/undergraduate-programs/resources/",
-    "category": "General",
-    "link": "https://www.cis.udel.edu/academics/undergraduate-programs/undergraduate-faqs/"
-  },
-  {
-    "question": "What are the all Sage commands for?",
-    "answer": "Check them out for yourself at https://ud-cis-discord.github.io/pages/commands",
-    "category": "Server Questions",
-    "link": "https://ud-cis-discord.github.io/pages/commands"
-  }
-]
+	{
+	  "question": "Who can I reach out to about the JP Morgan - CCOR Fair Lending Quant Modeling Analyst position?",
+	  "answer": "Send your resume to manni.yu@jpmchase.com",
+	  "category": "Job/Interview",
+	  "link": "https://jobs.cis.udel.edu/home"
+	},
+	{
+	  "question": "What are the requirements for a Software Developer at Monterey Enterprises?",
+	  "answer": "Bachelor's degree or higher in computer science or equivalent, 1 to 3 years experience in software development, including internships, Ability to thrive in an environment where problem-solving, communication, reliability, and commitment are paramount, Suitable home office workspace, Ability to work full-time Monday through Friday 5:30 AM to 2:30 PM EPT with a 7-day week of on-call time every third week, Located in or relocate to Northern Delaware or surrounding areas, C# .NET in Visual Studio or transferable language/IDE experience, MS t-SQL Programming with SQL Server or similar database experience, WPF/XAML/WinForms or similar desktop UI experience",
+	  "category": "Job/Interview",
+	  "link": "https://jobs.cis.udel.edu/home"
+	},
+	{
+	  "question": "Where can I learn more about the The Neunuebel Neuroscience Lab?",
+	  "answer": "https://jneunuebel6.wixsite.com/psychlab",
+	  "category": "Job/Interview",
+	  "link": "https://jobs.cis.udel.edu/home"
+	},
+	{
+	  "question": "Where can I find full time and internship opportunities in software development?",
+	  "answer": "Go to https://jobs.cis.udel.edu/home and to find any positions that may offer what you are looking for",
+	  "category": "Job/Interview",
+	  "link": "https://jobs.cis.udel.edu/home"
+	},
+	{
+	  "question": "The class or section I want is full",
+	  "answer": "If you find that the course you want to take (or a section of it) is full, please place yourself on the wait list. This will give all students a chance to place themselves on the wait lists of their desired courses. We will then consider them in priority order based on their status (CS majors or other majors, senior/junior/sophomore/freshman) and on their need for the course, e.g. is the course needed for a specific degree requirement, or is the student close to graduation. Wait lists are processed periodically all the way until the semester starts.",
+	  "category": "Class Registration",
+	  "link": "https://www.cis.udel.edu/academics/course-registration-information/#:~:text=Which%20goes%20with%20which%3F,the%20Registrar%20course%20guide%20list."
+	},
+	{
+	  "question": "I am facing issues registering for a course. Who can I contact?",
+	  "answer": "Some courses, sections, or seats are reserved for certain populations (often majors, but sometimes students from other majors, or for freshmen during New Student Orientation in the summer). These reservations are not always visible in the registration process. Most of our lower-level courses (CISC220 and below) become available to all students after all registration appointments have completed (this semester, that date is Friday, November 18). So check back on or after that date to see if you can register.",
+	  "category": "Class Registration",
+	  "link": "https://www.udel.edu/academics/registrar/students/grading-registration/registration-faqs/#time"
+	},
+	{
+	  "question": "I can't register for a course: prerequisite error",
+	  "answer": "Carefully check the prerequisites, either by looking up the course online or checking the catalog. Carefully check your transcript under UDSIS to see if it shows that you have the necessary coursework. Some of our courses require a minimum grade such as C- in the prerequisite. If you took the course at another institution, verify that the transfer-of-credit worked properly. If you need coursework from an institution evaluated, see the Registrar’s page on Transfer of Credit (www.udel.edu/transfercredit) . If you think that everything is in the system correctly but you still can’t get in, complete our Web form.",
+	  "category": "Class Registration",
+	  "link": "https://www.cis.udel.edu/academics/course-registration-information/#:~:text=Which%20goes%20with%20which%3F,the%20Registrar%20course%20guide%20list."
+	},
+	{
+	  "question": "I am on a course wait list but I am receiving emails that there was an error with my enrollment",
+	  "answer": "These emails are sent by the Registrar’s Office when an automated job runs every night looking to see if students can be moved from the wait lists into the courses. It can be disconcerting to receive these emails, but please be aware that these emails are not under the control of the CIS Department. They can be safely ignored by you. Your position on the wait list is safe and you have not been removed from it. YOU DO NOT NEED TO DO ANYTHING WHEN YOU RECEIVE THESE EMAILS. PLEASE DO NOT SEND US EMAIL AND PLEASE DO NOT CONTACT THE CIS DEPARTMENT because there is nothing we can do about them.",
+	  "category": "Class Registration",
+	  "link": "https://www.cis.udel.edu/academics/course-registration-information/#:~:text=Which%20goes%20with%20which%3F,the%20Registrar%20course%20guide%20list."
+	},
+	{
+	  "question": "Can you tell me what is my position on the wait list for a course",
+	  "answer": "We are sorry but we cannot tell you your wait list position. Wait lists are constantly shuffled based on the priority of a student. For this reason, your position may change over time. The position you had when you initially got on the wait list is meaningless because that is not the order in which we process the wait lists. We also cannot predict your chances of getting into a course. That depends not only on your wait list position but also on how many seats become available in the course. We have no way of predicting whether or not any students will drop out from it. Our sincere advice to you is to have a Plan B in case you are not able to get into the course.",
+	  "category": "Class Registration",
+	  "link": "https://www.cis.udel.edu/academics/course-registration-information/#:~:text=Which%20goes%20with%20which%3F,the%20Registrar%20course%20guide%20list."
+	},
+	{
+	  "question": "I need to get approval to substitute a course or a degree requirement",
+	  "answer": "If you need a course substitution, need waiver or substitution of a degree requirement, or other issues concerned with the requirements of your major or minor, then you should fill the CIS Degree Requirement Substitution Form (https://forms.cis.udel.edu/user/form/5cdc9d576ea09a0490e925ba)",
+	  "category": "Class Registration",
+	  "link": "https://www.cis.udel.edu/academics/course-registration-information/#:~:text=Which%20goes%20with%20which%3F,the%20Registrar%20course%20guide%20list."
+	},
+	{
+	  "question": "Do I need to register for a lecture as well as a lab? Which goes with which?",
+	  "answer": "In classes with a lab, you register for the lab and it will automatically register you in the corresponding lecture. (All classes have a lecture component). The easiest way to see what lab sections go with what lecture is to look at the Registrar course guide list. The coupling between components is mandatory for computer science courses. That is, you cannot “cherry-pick” the lecture and lab—you must pick the ones that go together.",
+	  "category": "Class Registration",
+	  "link": "https://www.cis.udel.edu/academics/course-registration-information/#:~:text=Which%20goes%20with%20which%3F,the%20Registrar%20course%20guide%20list."
+	},
+	{
+	  "question": "There is no instructor name for the course I want to take",
+	  "answer": "Instructors for certain classes are not always determined until after the open registration period. Instructor names will be added as permanent assignments are determined.",
+	  "category": "Class Registration",
+	  "link": "https://www.cis.udel.edu/academics/course-registration-information/#:~:text=Which%20goes%20with%20which%3F,the%20Registrar%20course%20guide%20list."
+	},
+	{
+	  "question": "Additional Registrar Help Page for Course Registration",
+	  "answer": "For additional registration help, please go to the following Registrar Help Page: http://www1.udel.edu/registrar/course-info-registration/register-for-classes/reghelp.html#time",
+	  "category": "Class Registration",
+	  "link": "https://www.cis.udel.edu/academics/course-registration-information/#:~:text=Which%20goes%20with%20which%3F,the%20Registrar%20course%20guide%20list."
+	},
+	{
+	  "question": "How can I find out who my advisor is?",
+	  "answer": "Check on the UDSIS system. The CIS department no longer keeps separate advisor records. More information about advisors can be located at Advisor info.",
+	  "category": "General",
+	  "link": "https://www.cis.udel.edu/academics/undergraduate-programs/undergraduate-faqs/"
+	},
+	{
+	  "question": "I'm having trouble reaching my teacher/advisor. What can I do?",
+	  "answer": "There are several ways you can reach your Professor, Instructor or Advisor: Send an email. Call on the phone. Drop by his/her office. Visit during office hours. Faculty members often receive a huge volume of email. Sometimes they will reply promptly to email and sometimes they are unable to reply as promptly as you would like. If you don’t get a response in the time frame you need, please use one of the options above to reach your teacher/advisor. Finally, in desperation, you can contact the CIS Undergraduate Coordinator, Samantha Fowle at 302-831-2712 or samfowle@udel.edu and she will help you to try to contact your teacher/adviser.",
+	  "category": "General",
+	  "link": "https://www.cis.udel.edu/academics/undergraduate-programs/undergraduate-faqs/"
+	},
+	{
+	  "question": "Please give me permission to take a UD online course this term",
+	  "answer": "The CIS department policy is not to authorize online courses during fall and spring semesters. The added benefits to learning from live interactions outweigh the convenience online courses may provide.",
+	  "category": "General",
+	  "link": "https://www.cis.udel.edu/academics/undergraduate-programs/undergraduate-faqs/"
+	},
+	{
+	  "question": "Can I get a bachelor's degree and master's degree in computer science in 5 years?",
+	  "answer": "If you are up to the challenge, yes! The MS degree requires 10 courses beyond the undergraduate work. Normally this is done over 1.5 to 2 years. Graduate students typically take 2 or 3 courses per term, depending on such variables as teaching assistant or research assistant work. Two things allow you to design a 5 year program: (1) With permission and prerequisites, you can take some graduate courses while still an undergraduate. (2) You can take 4 courses a term as a graduate student. It is not for the faint of heart, but it is allowed and doable. A 5 year program requires advanced planning. You should start discussing it with your advisor at end of sophomore year. Consult the catalog and dept web page about the MS program. Admission to the graduate program isn’t determined until spring of your senior year. If there is serious doubt about getting admitted, you probably shouldn’t be packing it into 5 years anyway. Note: a graduate course taken in place of a related undergraduate course to meet a major requirement cannot also count toward the graduate program.",
+	  "category": "General",
+	  "link": "https://www.cis.udel.edu/academics/undergraduate-programs/undergraduate-faqs/"
+	},
+	{
+	  "question": "What minimum grade must I get in Math 210?",
+	  "answer": "BS in CS majors must get C- or better in Math 210, because that grade level is an enforced prerequisite to the required course CISC303. INSY majors and BA in CS majors must get D- or better. The BA requires a C- or better in major courses. This applies to the CISC required courses, but not to the required Math courses(210 and 241). A student in any major who wishes to take CISC 303/304 must have the C- or better in Math 210.",
+	  "category": "General",
+	  "link": "https://www.cis.udel.edu/academics/undergraduate-programs/undergraduate-faqs/"
+	},
+	{
+	  "question": "Can I take MISY 160 as a free elective?",
+	  "answer": "No. Students in CISC (or any student who takes any CISC course beyond 101) can no longer take MISY 160, CISC 101, or FREC 135 for credit. If you took one of these courses BEFORE changing majors or taking an advanced CISC course, then it will still count as a free elective.",
+	  "category": "General",
+	  "link": "https://www.cis.udel.edu/academics/undergraduate-programs/undergraduate-faqs/"
+	},
+	{
+	  "question": "(Current Students) How do I apply for a Major in CIS?",
+	  "answer": "",
+	  "category": "General",
+	  "link": "https://www.cis.udel.edu/academics/undergraduate-programs/undergraduate-faqs/"
+	},
+	{
+	  "question": "How do I add a minor?",
+	  "answer": "The CISC Department processes all applications for the computer science minor and the bioinformatics minor through the online application form at http://www.udel.edu/udsis-student. Before applying for a computer science or bioinformatics minor, students must have earned a grade of B- or better in CISC-106 or CISC-108 or CISC-181. The minor is restricted due to program capacity limitations. For advice on the the elective course choices of the minor, contact cis-ugradprgm@udel.edu.",
+	  "category": "General",
+	  "link": "https://www.cis.udel.edu/academics/undergraduate-programs/undergraduate-faqs/"
+	},
+	{
+	  "question": "What are some useful resources I should know about?",
+	  "answer": "Go to https://www.cis.udel.edu/academics/undergraduate-programs/resources/",
+	  "category": "General",
+	  "link": "https://www.cis.udel.edu/academics/undergraduate-programs/undergraduate-faqs/"
+	},
+	{
+	  "question": "What are the all Sage commands for?",
+	  "answer": "Check them out for yourself at https://ud-cis-discord.github.io/pages/commands",
+	  "category": "Server Questions",
+	  "link": "https://ud-cis-discord.github.io/pages/commands"
+	}
+  ]
