@@ -4,7 +4,6 @@ import { DatabaseError } from '@lib/types/errors';
 import { CHANNELS, DB, ROLES, GUILDS } from '@root/config';
 import { SageUser } from '@lib/types/SageUser';
 import { calcNeededExp } from '@lib/utils/generalUtils';
-import { levenshteinDistance } from '@lib/utils/levenshtein';
 
 const startingColor = 80;
 const greenIncrement = 8;
@@ -56,6 +55,23 @@ async function countMessages(msg: Message): Promise<void> {
 	);
 }
 
+// helper functions
+function getKeywordSet(text: string): Set<string> {
+	return new Set(
+		text
+			.toLowerCase()
+			.replace(/[^a-z0-9\s]/gi, '') // remove punctuation
+			.split(/\s+/)
+			.filter(word => word.length > 2 || /\d/.test(word)) // keep meaningful words or ones with numbers
+	);
+}
+
+function getTokenSimilarity(userSet: Set<string>, faqSet: Set<string>): number {
+	const intersection = new Set([...userSet].filter(word => faqSet.has(word)));
+	return intersection.size / Math.max(userSet.size, faqSet.size);
+}
+
+
 async function handleFAQResponse(msg: Message): Promise<void> {
 	if (msg.author.bot) return;
 
@@ -70,7 +86,6 @@ async function handleFAQResponse(msg: Message): Promise<void> {
 		return;
 	}
 
-	// Set new cooldown expiration time
 	await msg.client.mongo.collection(DB.CLIENT_DATA).updateOne(
 		{ _id: cooldownKey },
 		{ $set: { value: now + cooldown } },
@@ -78,38 +93,43 @@ async function handleFAQResponse(msg: Message): Promise<void> {
 	);
 
 	const userQuestion = msg.content.trim().toLowerCase();
-
-	// Ignore very short inputs to prevent false positives
-	if (userQuestion.length < 4) {
-		await msg.reply('Please provide a more detailed question.');
-		return;
-	}
-
 	const faqs = await msg.client.mongo.collection(DB.FAQS).find().toArray();
+
 	let foundFAQ = null;
+	let bestMatchScore = 0;
+
+	const userKeywordSet = getKeywordSet(userQuestion);
 
 	for (const faq of faqs) {
 		const faqQuestion = faq.question.toLowerCase();
 
-		// 1️⃣ Exact phrase matching (Regex)
-		const regex = new RegExp(`\\b${faqQuestion}\\b`, 'i');
-		if (regex.test(userQuestion)) {
+		// Exact Match
+		if (userQuestion === faqQuestion) {
 			foundFAQ = faq;
 			break;
 		}
 
-		// 2️⃣ Compute similarity score instead of fixed Levenshtein distance
-		const distance = levenshteinDistance(userQuestion, faqQuestion);
-		const similarity = 1 - (distance / Math.max(userQuestion.length, faqQuestion.length));
+		// Get Token Sets
+		const faqKeywordSet = getKeywordSet(faqQuestion);
 
-		// 3️⃣ Ensure at least one important keyword overlaps
-		const faqKeywords = faqQuestion.split(' ').filter(word => word.length > 3);
-		const keywordMatch = faqKeywords.some(keyword => userQuestion.includes(keyword));
+		// Filter if course codes don’t match
+		const userHasCourse = [...userKeywordSet].find(word => /\d/.test(word));
+		const faqHasCourse = [...faqKeywordSet].find(word => /\d/.test(word));
+		if (userHasCourse && faqHasCourse && userHasCourse !== faqHasCourse) {
+			continue;
+		}
 
-		// Accept match if similarity > 80% and keywords overlap
-		if (similarity > 0.8 && keywordMatch) {
+		// Token Similarity
+		let similarity = getTokenSimilarity(userKeywordSet, faqKeywordSet);
+
+		// Bonus if both contain course codes
+		if (userHasCourse && faqHasCourse && userHasCourse === faqHasCourse) {
+			similarity += 0.2;
+		}
+
+		if (similarity >= 0.5 && similarity > bestMatchScore) {
 			foundFAQ = faq;
-			break;
+			bestMatchScore = similarity;
 		}
 	}
 
@@ -144,101 +164,11 @@ async function handleFAQResponse(msg: Message): Promise<void> {
 			} else if (reaction.emoji.name === '👎') {
 				await msg.reply('Sorry that you didn’t find it helpful. The DevOps team will continue improving the answers to ensure satisfaction.');
 			}
-
-			// Lock reactions to avoid spam
 			await reply.reactions.removeAll();
 			collector.stop();
 		});
 	}
 }
-
-// async function handleFAQResponse(msg: Message): Promise<void> {
-// 	if (msg.author.bot) return;
-
-// 	const cooldown = 3 * 1000;
-// 	const cooldownKey = `faqCooldown_${msg.author.id}`;
-// 	const now = Date.now();
-// 	const cooldownEnd = await msg.client.mongo.collection(DB.CLIENT_DATA).findOne({ _id: cooldownKey });
-
-// 	if (cooldownEnd && cooldownEnd.value > now) {
-// 		const remainingTime = Math.ceil((cooldownEnd.value - now) / 1000);
-// 		await msg.reply(`Please wait ${remainingTime} seconds before asking another question.`);
-// 		return;
-// 	}
-
-// 	// Set new cooldown expiration time
-// 	await msg.client.mongo.collection(DB.CLIENT_DATA).updateOne(
-// 		{ _id: cooldownKey },
-// 		{ $set: { value: now + cooldown } },
-// 		{ upsert: true }
-// 	);
-
-// 	const userQuestion = msg.content.trim();
-// 	const faqs = await msg.client.mongo.collection(DB.FAQS).find().toArray();
-
-// 	let foundFAQ = null;
-
-// 	for (const faq of faqs) {
-// 		// const regex = new RegExp(`\\b${faq.question}\\b`, 'i');
-// 		// if (regex.test(userInput)) {
-// 		// 	foundFAQ = faq;
-// 		// 	break;
-// 		// }
-
-// 		const distance = levenshteinDistance(userQuestion, faq.question);
-
-// 		// console.log(faq.question.toLowerCase());
-// 		// if (userQuestion.toLowerCase().includes(faq.question.toLowerCase())) {
-// 		//     foundFAQ = faq;
-// 		//     break;
-// 		// }
-// 		if (distance < 5) {
-// 			foundFAQ = faq;
-// 			break;
-// 		}
-// 	}
-
-// 	if (foundFAQ) {
-// 		const embed = new EmbedBuilder()
-// 			.setTitle(foundFAQ.question)
-// 			.setDescription(foundFAQ.answer)
-// 			.setColor('#00FF00')
-// 			.setTimestamp();
-
-// 		if (foundFAQ.link) {
-// 			embed.addFields(
-// 				{ name: 'For more details', value: foundFAQ.link });
-// 		}
-
-// 		embed.addFields({ name: 'Did you find this response helpful?', value: '👍 Yes | 👎 No' });
-
-// 		const reply = await msg.reply({
-// 			content: `${msg.member}, here is the answer to your question:`,
-// 			embeds: [embed]
-// 		});
-
-// 		// React with thumbs up and thumbs down.
-// 		await reply.react('👍');
-// 		await reply.react('👎');
-
-// 		// Create a reaction collector
-// 		const filter = (reaction: any, user: any) =>
-// 			['👍', '👎'].includes(reaction.emoji.name) && user.id === msg.author.id;
-// 		const collector = reply.createReactionCollector({ filter, time: 60000 });
-
-// 		collector.on('collect', async (reaction) => {
-// 			if (reaction.emoji.name === '👍') {
-// 				await msg.reply('Great! Glad you found it helpful!');
-// 			} else if (reaction.emoji.name === '👎') {
-// 				await msg.reply('Sorry that you didn’t find it helpful. The DevOps team will continue improving the answers to ensure satisfaction.');
-// 			}
-
-// 			// Lock reactions to avoid people SPAMMING REACTIONS!
-// 			await reply.reactions.removeAll();
-// 			collector.stop();
-// 		});
-// 	}
-// }
 
 async function handleExpDetract(msg: Message | PartialMessage) {
 	const bot = msg.client;
