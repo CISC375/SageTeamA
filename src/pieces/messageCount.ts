@@ -4,7 +4,6 @@ import { DatabaseError } from '@lib/types/errors';
 import { CHANNELS, DB, ROLES, GUILDS } from '@root/config';
 import { SageUser } from '@lib/types/SageUser';
 import { calcNeededExp } from '@lib/utils/generalUtils';
-import {levenshteinDistance } from '@lib/utils/levenshtein'
 
 const startingColor = 80;
 const greenIncrement = 8;
@@ -56,6 +55,23 @@ async function countMessages(msg: Message): Promise<void> {
 	);
 }
 
+// helper functions
+function getKeywordSet(text: string): Set<string> {
+	return new Set(
+		text
+			.toLowerCase()
+			.replace(/[^a-z0-9\s]/gi, '') // remove punctuation
+			.split(/\s+/)
+			.filter(word => word.length > 2 || /\d/.test(word)) // keep meaningful words or ones with numbers
+	);
+}
+
+function getTokenSimilarity(userSet: Set<string>, faqSet: Set<string>): number {
+	const intersection = new Set([...userSet].filter(word => faqSet.has(word)));
+	return intersection.size / Math.max(userSet.size, faqSet.size);
+}
+
+
 async function handleFAQResponse(msg: Message): Promise<void> {
 	if (msg.author.bot) return;
 
@@ -70,31 +86,52 @@ async function handleFAQResponse(msg: Message): Promise<void> {
 		return;
 	}
 
-	// Set new cooldown expiration time
 	await msg.client.mongo.collection(DB.CLIENT_DATA).updateOne(
 		{ _id: cooldownKey },
 		{ $set: { value: now + cooldown } },
 		{ upsert: true }
 	);
 
-	const userQuestion = msg.content.trim();
+	const userQuestion = msg.content.trim().toLowerCase();
 	const faqs = await msg.client.mongo.collection(DB.FAQS).find().toArray();
 
 	let foundFAQ = null;
+	let bestMatchScore = 0;
+
+	const userKeywordSet = getKeywordSet(userQuestion);
 
 	for (const faq of faqs) {
-        const distance = levenshteinDistance(userQuestion, faq.question);
+		const faqQuestion = faq.question.toLowerCase();
 
-        // console.log(faq.question.toLowerCase());
-        // if (userQuestion.toLowerCase().includes(faq.question.toLowerCase())) {
-        //     foundFAQ = faq;
-        //     break;
-        // }
-        if (distance < 5) {
-            foundFAQ = faq;
-            break;
-        }
-    }
+		// Exact Match
+		if (userQuestion === faqQuestion) {
+			foundFAQ = faq;
+			break;
+		}
+
+		// Get Token Sets
+		const faqKeywordSet = getKeywordSet(faqQuestion);
+
+		// Filter if course codes don’t match
+		const userHasCourse = [...userKeywordSet].find(word => /\d/.test(word));
+		const faqHasCourse = [...faqKeywordSet].find(word => /\d/.test(word));
+		if (userHasCourse && faqHasCourse && userHasCourse !== faqHasCourse) {
+			continue;
+		}
+
+		// Token Similarity
+		let similarity = getTokenSimilarity(userKeywordSet, faqKeywordSet);
+
+		// Bonus if both contain course codes
+		if (userHasCourse && faqHasCourse && userHasCourse === faqHasCourse) {
+			similarity += 0.2;
+		}
+
+		if (similarity >= 0.5 && similarity > bestMatchScore) {
+			foundFAQ = faq;
+			bestMatchScore = similarity;
+		}
+	}
 
 	if (foundFAQ) {
 		const embed = new EmbedBuilder()
@@ -104,8 +141,7 @@ async function handleFAQResponse(msg: Message): Promise<void> {
 			.setTimestamp();
 
 		if (foundFAQ.link) {
-			embed.addFields(
-				{ name: 'For more details', value: foundFAQ.link });
+			embed.addFields({ name: 'For more details', value: foundFAQ.link });
 		}
 
 		embed.addFields({ name: 'Did you find this response helpful?', value: '👍 Yes | 👎 No' });
@@ -115,11 +151,9 @@ async function handleFAQResponse(msg: Message): Promise<void> {
 			embeds: [embed]
 		});
 
-		// React with thumbs up and thumbs down.
 		await reply.react('👍');
 		await reply.react('👎');
 
-		// Create a reaction collector
 		const filter = (reaction: any, user: any) =>
 			['👍', '👎'].includes(reaction.emoji.name) && user.id === msg.author.id;
 		const collector = reply.createReactionCollector({ filter, time: 60000 });
@@ -130,8 +164,6 @@ async function handleFAQResponse(msg: Message): Promise<void> {
 			} else if (reaction.emoji.name === '👎') {
 				await msg.reply('Sorry that you didn’t find it helpful. The DevOps team will continue improving the answers to ensure satisfaction.');
 			}
-
-			// Lock reactions to avoid people SPAMMING REACTIONS!
 			await reply.reactions.removeAll();
 			collector.stop();
 		});
