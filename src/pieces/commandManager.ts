@@ -1,6 +1,6 @@
 import {
 	Collection, Client, CommandInteraction, ApplicationCommand,
-	GuildMember, SelectMenuInteraction,
+	GuildMember, StringSelectMenuInteraction,
 	ModalSubmitInteraction, TextChannel, GuildMemberRoleManager,
 	ButtonInteraction, ModalBuilder, TextInputBuilder, ActionRowBuilder,
 	ModalActionRowComponentBuilder, ApplicationCommandType, ApplicationCommandDataResolvable, ChannelType, ApplicationCommandPermissionType, TextInputStyle,
@@ -40,7 +40,7 @@ async function register(bot: Client): Promise<void> {
 
 	bot.on('interactionCreate', async interaction => {
 		if (interaction.isChatInputCommand() || interaction.isContextMenuCommand()) runCommand(interaction as ChatInputCommandInteraction, bot);
-		if (interaction.isSelectMenu()) handleDropdown(interaction);
+		if (interaction.isStringSelectMenu()) handleDropdown(interaction);
 		if (interaction.isModalSubmit()) handleModalBuilder(interaction, bot);
 		if (interaction.isButton()) handleButton(interaction);
 	});
@@ -55,7 +55,7 @@ async function register(bot: Client): Promise<void> {
 	});
 }
 
-async function handleDropdown(interaction: SelectMenuInteraction) {
+async function handleDropdown(interaction: StringSelectMenuInteraction) {
 	const courses: Array<Course> = await interaction.client.mongo.collection(DB.COURSES).find().toArray();
 	const { customId, values, member } = interaction;
 	let responseContent = `Your roles have been updated.`;

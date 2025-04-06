@@ -112,7 +112,7 @@ async function handleFAQResponse(msg: Message): Promise<void> {
 		// Get Token Sets
 		const faqKeywordSet = getKeywordSet(faqQuestion);
 
-		// Filter if course codes don’t match
+		// Filter if course codes don't match
 		const userHasCourse = [...userKeywordSet].find(word => /\d/.test(word));
 		const faqHasCourse = [...faqKeywordSet].find(word => /\d/.test(word));
 		if (userHasCourse && faqHasCourse && userHasCourse !== faqHasCourse) {
@@ -134,6 +134,31 @@ async function handleFAQResponse(msg: Message): Promise<void> {
 	}
 
 	if (foundFAQ) {
+		// Track FAQ usage statistics
+		const faqId = foundFAQ._id || foundFAQ.question;
+		await msg.client.mongo.collection(DB.CLIENT_DATA).updateOne(
+			{ _id: `faq_stats_${faqId}` },
+			{ 
+				$inc: { 
+					usageCount: 1,
+					[`categories.${foundFAQ.category}`]: 1
+				},
+				$set: {
+					lastUsed: now,
+					question: foundFAQ.question,
+					category: foundFAQ.category
+				},
+				$push: {
+					usageHistory: {
+						userId: msg.author.id,
+						username: msg.author.username,
+						timestamp: now
+					}
+				}
+			},
+			{ upsert: true }
+		);
+
 		const embed = new EmbedBuilder()
 			.setTitle(foundFAQ.question)
 			.setDescription(foundFAQ.answer)
@@ -159,10 +184,19 @@ async function handleFAQResponse(msg: Message): Promise<void> {
 		const collector = reply.createReactionCollector({ filter, time: 60000 });
 
 		collector.on('collect', async (reaction) => {
+			// Track feedback on FAQ
+			const feedback = reaction.emoji.name === '👍' ? 'positive' : 'negative';
+			await msg.client.mongo.collection(DB.CLIENT_DATA).updateOne(
+				{ _id: `faq_stats_${faqId}` },
+				{ 
+					$inc: { [`feedback.${feedback}`]: 1 } 
+				}
+			);
+			
 			if (reaction.emoji.name === '👍') {
 				await msg.reply('Great! Glad you found it helpful!');
 			} else if (reaction.emoji.name === '👎') {
-				await msg.reply('Sorry that you didn’t find it helpful. The DevOps team will continue improving the answers to ensure satisfaction.');
+				await msg.reply("Sorry that you didn't find it helpful. The DevOps team will continue improving the answers to ensure satisfaction.");
 			}
 			await reply.reactions.removeAll();
 			collector.stop();
