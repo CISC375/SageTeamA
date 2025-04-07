@@ -97,6 +97,40 @@ async function countMessages(msg: Message): Promise<void> {
 	);
 }
 
+// helper functions
+function getKeywordSet(text: string): Set<string> {
+	return new Set(
+		text
+			.toLowerCase()
+			.replace(/[^a-z0-9\s]/gi, '') // remove punctuation
+			.split(/\s+/)
+			.filter(word => word.length > 2 || /\d/.test(word)) // keep meaningful words or ones with numbers
+	);
+}
+
+function getTokenSimilarity(userSet: Set<string>, faqSet: Set<string>): number {
+	const intersection = new Set([...userSet].filter(word => faqSet.has(word)));
+	return intersection.size / Math.max(userSet.size, faqSet.size);
+}
+
+
+// helper functions
+function getKeywordSet(text: string): Set<string> {
+	return new Set(
+		text
+			.toLowerCase()
+			.replace(/[^a-z0-9\s]/gi, '') // remove punctuation
+			.split(/\s+/)
+			.filter(word => word.length > 2 || /\d/.test(word)) // keep meaningful words or ones with numbers
+	);
+}
+
+function getTokenSimilarity(userSet: Set<string>, faqSet: Set<string>): number {
+	const intersection = new Set([...userSet].filter(word => faqSet.has(word)));
+	return intersection.size / Math.max(userSet.size, faqSet.size);
+}
+
+
 async function handleFAQResponse(msg: Message, now: number): Promise<void> {
     if (msg.author.bot) return;
 
@@ -122,26 +156,73 @@ async function handleFAQResponse(msg: Message, now: number): Promise<void> {
         { upsert: true }
     );
 
-	const userQuestion = msg.content.trim();
+	const userQuestion = msg.content.trim().toLowerCase();
 	const faqs = await msg.client.mongo.collection(DB.FAQS).find().toArray();
 
 	let foundFAQ = null;
+	let bestMatchScore = 0;
+
+	const userKeywordSet = getKeywordSet(userQuestion);
 
 	for (const faq of faqs) {
-        const distance = levenshteinDistance(userQuestion, faq.question);
+		const faqQuestion = faq.question.toLowerCase();
 
-        // console.log(faq.question.toLowerCase());
-        // if (userQuestion.toLowerCase().includes(faq.question.toLowerCase())) {
-        //     foundFAQ = faq;
-        //     break;
-        // }
-        if (distance < 5) {
-            foundFAQ = faq;
-            break;
-        }
-    }
+		// Exact Match
+		if (userQuestion === faqQuestion) {
+			foundFAQ = faq;
+			break;
+		}
+
+		// Get Token Sets
+		const faqKeywordSet = getKeywordSet(faqQuestion);
+
+		// Filter if course codes don't match
+		const userHasCourse = [...userKeywordSet].find(word => /\d/.test(word));
+		const faqHasCourse = [...faqKeywordSet].find(word => /\d/.test(word));
+		if (userHasCourse && faqHasCourse && userHasCourse !== faqHasCourse) {
+			continue;
+		}
+
+		// Token Similarity
+		let similarity = getTokenSimilarity(userKeywordSet, faqKeywordSet);
+
+		// Bonus if both contain course codes
+		if (userHasCourse && faqHasCourse && userHasCourse === faqHasCourse) {
+			similarity += 0.2;
+		}
+
+		if (similarity >= 0.5 && similarity > bestMatchScore) {
+			foundFAQ = faq;
+			bestMatchScore = similarity;
+		}
+	}
 
 	if (foundFAQ) {
+		// Track FAQ usage statistics
+		const faqId = foundFAQ._id || foundFAQ.question;
+		await msg.client.mongo.collection(DB.CLIENT_DATA).updateOne(
+			{ _id: `faq_stats_${faqId}` },
+			{ 
+				$inc: { 
+					usageCount: 1,
+					[`categories.${foundFAQ.category}`]: 1
+				},
+				$set: {
+					lastUsed: now,
+					question: foundFAQ.question,
+					category: foundFAQ.category
+				},
+				$push: {
+					usageHistory: {
+						userId: msg.author.id,
+						username: msg.author.username,
+						timestamp: now
+					}
+				}
+			},
+			{ upsert: true }
+		);
+
 		const embed = new EmbedBuilder()
 			.setTitle(foundFAQ.question)
 			.setDescription(foundFAQ.answer)
@@ -149,8 +230,7 @@ async function handleFAQResponse(msg: Message, now: number): Promise<void> {
 			.setTimestamp();
 
 		if (foundFAQ.link) {
-			embed.addFields(
-				{ name: 'For more details', value: foundFAQ.link });
+			embed.addFields({ name: 'For more details', value: foundFAQ.link });
 		}
 
 		embed.addFields({ name: 'Did you find this response helpful?', value: '👍 Yes | 👎 No' });
@@ -160,23 +240,28 @@ async function handleFAQResponse(msg: Message, now: number): Promise<void> {
 			embeds: [embed]
 		});
 
-		// React with thumbs up and thumbs down.
 		await reply.react('👍');
 		await reply.react('👎');
 
-		// Create a reaction collector
 		const filter = (reaction: any, user: any) =>
 			['👍', '👎'].includes(reaction.emoji.name) && user.id === msg.author.id;
 		const collector = reply.createReactionCollector({ filter, time: 60000 });
 
 		collector.on('collect', async (reaction) => {
+			// Track feedback on FAQ
+			const feedback = reaction.emoji.name === '👍' ? 'positive' : 'negative';
+			await msg.client.mongo.collection(DB.CLIENT_DATA).updateOne(
+				{ _id: `faq_stats_${faqId}` },
+				{ 
+					$inc: { [`feedback.${feedback}`]: 1 } 
+				}
+			);
+			
 			if (reaction.emoji.name === '👍') {
 				await msg.reply('Great! Glad you found it helpful!');
 			} else if (reaction.emoji.name === '👎') {
-				await msg.reply('Sorry that you didn’t find it helpful. The development team will continue to ensure all answers guarantee satisfaction.');
+				await msg.reply("Sorry that you didn't find it helpful. The DevOps team will continue improving the answers to ensure satisfaction.");
 			}
-
-			// Lock reactions to avoid people SPAMMING REACTIONS!
 			await reply.reactions.removeAll();
 			collector.stop();
 		});
