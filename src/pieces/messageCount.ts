@@ -4,7 +4,7 @@ import { DatabaseError } from '@lib/types/errors';
 import { CHANNELS, DB, ROLES, GUILDS } from '@root/config';
 import { SageUser } from '@lib/types/SageUser';
 import { calcNeededExp } from '@lib/utils/generalUtils';
-import {levenshteinDistance } from '@lib/utils/levenshtein'
+//import {levenshteinDistance } from '@lib/utils/levenshtein'
 
 // Rate limit settings
 const MAX_COMMANDS = 5; // 5 questions per minute
@@ -96,23 +96,6 @@ async function countMessages(msg: Message): Promise<void> {
 			.catch(async error => bot.emit('error', error))
 	);
 }
-
-// helper functions
-function getKeywordSet(text: string): Set<string> {
-	return new Set(
-		text
-			.toLowerCase()
-			.replace(/[^a-z0-9\s]/gi, '') // remove punctuation
-			.split(/\s+/)
-			.filter(word => word.length > 2 || /\d/.test(word)) // keep meaningful words or ones with numbers
-	);
-}
-
-function getTokenSimilarity(userSet: Set<string>, faqSet: Set<string>): number {
-	const intersection = new Set([...userSet].filter(word => faqSet.has(word)));
-	return intersection.size / Math.max(userSet.size, faqSet.size);
-}
-
 
 // helper functions
 function getKeywordSet(text: string): Set<string> {
