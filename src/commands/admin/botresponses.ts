@@ -1,4 +1,4 @@
-import { ApplicationCommandOptionData, ApplicationCommandOptionType, ChatInputCommandInteraction, EmbedBuilder, InteractionResponse } from 'discord.js';
+import { ApplicationCommandOptionData, ApplicationCommandOptionType, ChatInputCommandInteraction, EmbedBuilder, InteractionResponse, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { Command } from '@lib/types/Command';
 import { DB } from '@root/config';
 import { ADMIN_PERMS } from '@lib/permissions';
@@ -68,6 +68,12 @@ export default class extends Command {
             description: 'Include admin command queries in results',
             type: ApplicationCommandOptionType.Boolean,
             required: false,
+        },
+        {
+            name: 'detailed',
+            description: 'Show detailed information for each question',
+            type: ApplicationCommandOptionType.Boolean,
+            required: false,
         }
     ];
 
@@ -77,6 +83,7 @@ export default class extends Command {
         const type = interaction.options.getString('type');
         const limit = interaction.options.getInteger('limit') || 10;
         const includeCommands = interaction.options.getBoolean('include_commands') || false;
+        const detailed = interaction.options.getBoolean('detailed') || false;
 
         // Build query based on options
         const query: any = {};
@@ -203,15 +210,16 @@ export default class extends Command {
         embed.addFields({
             name: 'Time Distribution', 
             value: 
-                `Morning (6am-12pm): ${timeDistribution.morning}\n` +
-                `Afternoon (12pm-6pm): ${timeDistribution.afternoon}\n` +
-                `Evening (6pm-12am): ${timeDistribution.evening}\n` +
-                `Night (12am-6am): ${timeDistribution.night}`,
+                `📅 **Morning** (6am-12pm): ${timeDistribution.morning}\n` +
+                `☀️ **Afternoon** (12pm-6pm): ${timeDistribution.afternoon}\n` +
+                `🌆 **Evening** (6pm-12am): ${timeDistribution.evening}\n` +
+                `🌙 **Night** (12am-6am): ${timeDistribution.night}`,
             inline: false 
         });
 
-        // Add top questions
+        // Add top questions with improved formatting
         let topQuestionsText = '';
+        
         questions.forEach((q, index) => {
             // Ensure counts are valid
             const count = typeof q.count === 'number' ? q.count : 0;
@@ -222,14 +230,54 @@ export default class extends Command {
                 if (q.firstAsked) {
                     const date = new Date(q.firstAsked);
                     if (!isNaN(date.getTime())) {
-                        dateStr = date.toLocaleDateString();
+                        dateStr = date.toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'short', 
+                            day: 'numeric' 
+                        });
                     }
                 }
             } catch (e) {
                 console.error('Error formatting date:', e);
             }
             
-            topQuestionsText += `${index + 1}. "${q.questionContent.substring(0, 50)}${q.questionContent.length > 50 ? '...' : ''}" - Asked ${count} times (first: ${dateStr})\n`;
+            // Get response type for display
+            const responseTypeEmoji = q.responseType ? 
+                (q.responseType === 'faq' ? '❓' : 
+                 q.responseType === 'command' ? '⌨️' : '💬') : '💬';
+            
+            const responseType = q.responseType ? 
+                (q.responseType.charAt(0).toUpperCase() + q.responseType.slice(1)) : 'Other';
+            
+            // Basic question info
+            topQuestionsText += `**${index + 1}.** ${responseTypeEmoji} \`${responseType}\` - "${q.questionContent.substring(0, 60)}${q.questionContent.length > 60 ? '...' : ''}"\n`;
+            topQuestionsText += `   • Asked **${count}** times (First: ${dateStr})\n`;
+            
+            // Add detailed user info if requested
+            if (detailed && q.instances && q.instances.length > 0) {
+                // Sort instances by most recent first
+                const sortedInstances = [...q.instances].sort((a, b) => {
+                    const dateA = new Date(a.timestamp);
+                    const dateB = new Date(b.timestamp);
+                    return dateB.getTime() - dateA.getTime();
+                });
+                
+                // Show up to 3 most recent instances
+                topQuestionsText += `   • **Recent users**: `;
+                const recentUsers = sortedInstances.slice(0, 3).map(instance => {
+                    const date = new Date(instance.timestamp);
+                    return `${instance.userName || 'Unknown'} (${date.toLocaleDateString()})`;
+                });
+                topQuestionsText += recentUsers.join(', ');
+                
+                // Show how many more users there are
+                if (sortedInstances.length > 3) {
+                    topQuestionsText += ` and ${sortedInstances.length - 3} more`;
+                }
+                topQuestionsText += '\n';
+            }
+            
+            topQuestionsText += '\n';
         });
 
         embed.addFields({
@@ -239,13 +287,24 @@ export default class extends Command {
         });
 
         // Add timeframe information
+        const descriptionParts = [];
+        
         if (timeframe !== 'all') {
-            embed.setDescription(`Statistics for ${timeframe === 'today' ? 'today' : `the past ${timeframe}`}`);
+            descriptionParts.push(`Statistics for ${timeframe === 'today' ? 'today' : `the past ${timeframe}`}`);
         }
 
         // Add user information if filtering by user
         if (user) {
-            embed.setDescription((embed.data.description || '') + `\nFiltered for user: ${user.username}`);
+            descriptionParts.push(`Filtered for user: ${user.username}`);
+        }
+        
+        // Add response type information if filtering by type
+        if (type) {
+            descriptionParts.push(`Showing only ${type.toUpperCase()} responses`);
+        }
+        
+        if (descriptionParts.length > 0) {
+            embed.setDescription(descriptionParts.join('\n'));
         }
 
         return interaction.reply({
