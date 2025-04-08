@@ -17,7 +17,6 @@ export default class extends Command {
 	runInDM = false;
 	permissions: ApplicationCommandPermissions[] = [ADMIN_PERMS];
 
-
 	async run(interaction: ChatInputCommandInteraction): Promise<InteractionResponse<boolean> | void> {
 		// Create a new modal for adding a FAQ
 		const modal = new ModalBuilder()

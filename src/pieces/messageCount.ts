@@ -4,8 +4,19 @@ import { DatabaseError } from '@lib/types/errors';
 import { CHANNELS, DB, ROLES, GUILDS } from '@root/config';
 import { SageUser } from '@lib/types/SageUser';
 import { calcNeededExp } from '@lib/utils/generalUtils';
-import { levenshteinDistance } from '@lib/utils/levenshtein';
-import { logMessageQuestion } from '@lib/utils/responseLogger';
+//import {levenshteinDistance } from '@lib/utils/levenshtein'
+
+// Rate limit settings
+const MAX_COMMANDS = 5; // 5 questions per minute
+const TIME_WINDOW = 60 * 1000; // 1 minute
+const WARNING_COOLDOWN = 0; // 0 seconds between warning messages
+interface RateLimitData {
+	timestamps: number[]; // Array of timestamps for the last 5 questions
+	lastWarning?: number; // Timestamp of the last warning message
+
+}
+const rateLimits = new Map<string, RateLimitData>(); // Map to store user rate limit data
+
 
 const startingColor = 80;
 const greenIncrement = 8;
@@ -19,9 +30,38 @@ const countedChannelTypes = [
 
 async function register(bot: Client): Promise<void> {
 	bot.on('messageCreate', async msg => {
+		// Ignore all bot messages right away
+		if (msg.author.bot) return;
+	
+		// Rate limiting logic for messages only
+		const userId = msg.author.id;
+		const now = Date.now();
+		let userRateLimit = rateLimits.get(userId) || { timestamps: [] };
+	
+		// Filter out timestamps older than 1 minute
+		userRateLimit.timestamps = userRateLimit.timestamps.filter(ts => now - ts < TIME_WINDOW);
+	
+		// Check if user has hit the limit
+		if (userRateLimit.timestamps.length >= MAX_COMMANDS) {
+			const timeUntilReset = ((TIME_WINDOW - (now - userRateLimit.timestamps[0])) / 1000).toFixed(1);
+			const lastWarning = userRateLimit.lastWarning || 0;
+	
+			if (now - lastWarning >= WARNING_COOLDOWN) {
+				await msg.reply(`You're asking too many questions! Please wait ${timeUntilReset} seconds before asking another one.`);
+				userRateLimit.lastWarning = now;
+				rateLimits.set(userId, userRateLimit);
+			}
+			return; // Stop further processing
+		}
+	
+		// Update the Map only if FAQ processing succeeds (moved into handleFAQResponse)
+		rateLimits.set(userId, userRateLimit);
+	
+		// Original processing
 		countMessages(msg).catch(async error => bot.emit('error', error));
-		await handleFAQResponse(msg);
+		await handleFAQResponse(msg, now); // Pass 'now' to handleFAQResponse
 	});
+
 	bot.on('messageDelete', async msg => {
 		if (msg.content && msg.content.startsWith('s;')) return;
 		handleExpDetract(msg);
@@ -57,46 +97,115 @@ async function countMessages(msg: Message): Promise<void> {
 	);
 }
 
-async function handleFAQResponse(msg: Message): Promise<void> {
-	if (msg.author.bot) return;
-
-	const cooldown = 3 * 1000;
-	const cooldownKey = `faqCooldown_${msg.author.id}`;
-	const now = Date.now();
-	const cooldownEnd = await msg.client.mongo.collection(DB.CLIENT_DATA).findOne({ _id: cooldownKey });
-
-	if (cooldownEnd && cooldownEnd.value > now) {
-		const remainingTime = Math.ceil((cooldownEnd.value - now) / 1000);
-		await msg.reply(`Please wait ${remainingTime} seconds before asking another question.`);
-		return;
-	}
-
-	// Set new cooldown expiration time
-	await msg.client.mongo.collection(DB.CLIENT_DATA).updateOne(
-		{ _id: cooldownKey },
-		{ $set: { value: now + cooldown } },
-		{ upsert: true }
+// helper functions
+function getKeywordSet(text: string): Set<string> {
+	return new Set(
+		text
+			.toLowerCase()
+			.replace(/[^a-z0-9\s]/gi, '') // remove punctuation
+			.split(/\s+/)
+			.filter(word => word.length > 2 || /\d/.test(word)) // keep meaningful words or ones with numbers
 	);
+}
 
-	const userQuestion = msg.content.trim();
-	
-	// Log the question right away, regardless of whether we find an FAQ match
-	await logMessageQuestion(msg, 'faq');
-	
+function getTokenSimilarity(userSet: Set<string>, faqSet: Set<string>): number {
+	const intersection = new Set([...userSet].filter(word => faqSet.has(word)));
+	return intersection.size / Math.max(userSet.size, faqSet.size);
+}
+
+
+async function handleFAQResponse(msg: Message, now: number): Promise<void> {
+    if (msg.author.bot) return;
+
+    const cooldown = 3 * 1000;
+    const cooldownKey = `faqCooldown_${msg.author.id}`;
+    const cooldownEnd = await msg.client.mongo.collection(DB.CLIENT_DATA).findOne({ _id: cooldownKey });
+
+    if (cooldownEnd && cooldownEnd.value > now) {
+        const remainingTime = Math.ceil((cooldownEnd.value - now) / 1000);
+        await msg.reply(`You're asking too quickly! Please wait ${remainingTime} seconds before asking another question.`);
+        return; // Exit without counting this toward the rate limit
+    }
+
+    // If we get here, the message is processed, so count it toward the rate limit
+    let userRateLimit = rateLimits.get(msg.author.id)!; // Already set in messageCreate
+    userRateLimit.timestamps.push(now);
+    rateLimits.set(msg.author.id, userRateLimit);
+
+    // Set the FAQ cooldown
+    await msg.client.mongo.collection(DB.CLIENT_DATA).updateOne(
+        { _id: cooldownKey },
+        { $set: { value: now + cooldown } },
+        { upsert: true }
+    );
+
+	const userQuestion = msg.content.trim().toLowerCase();
 	const faqs = await msg.client.mongo.collection(DB.FAQS).find().toArray();
 
 	let foundFAQ = null;
+	let bestMatchScore = 0;
+
+	const userKeywordSet = getKeywordSet(userQuestion);
 
 	for (const faq of faqs) {
-        const distance = levenshteinDistance(userQuestion, faq.question);
+		const faqQuestion = faq.question.toLowerCase();
 
-        if (distance < 5) {
-            foundFAQ = faq;
-            break;
-        }
-    }
+		// Exact Match
+		if (userQuestion === faqQuestion) {
+			foundFAQ = faq;
+			break;
+		}
+
+		// Get Token Sets
+		const faqKeywordSet = getKeywordSet(faqQuestion);
+
+		// Filter if course codes don't match
+		const userHasCourse = [...userKeywordSet].find(word => /\d/.test(word));
+		const faqHasCourse = [...faqKeywordSet].find(word => /\d/.test(word));
+		if (userHasCourse && faqHasCourse && userHasCourse !== faqHasCourse) {
+			continue;
+		}
+
+		// Token Similarity
+		let similarity = getTokenSimilarity(userKeywordSet, faqKeywordSet);
+
+		// Bonus if both contain course codes
+		if (userHasCourse && faqHasCourse && userHasCourse === faqHasCourse) {
+			similarity += 0.2;
+		}
+
+		if (similarity >= 0.5 && similarity > bestMatchScore) {
+			foundFAQ = faq;
+			bestMatchScore = similarity;
+		}
+	}
 
 	if (foundFAQ) {
+		// Track FAQ usage statistics
+		const faqId = foundFAQ._id || foundFAQ.question;
+		await msg.client.mongo.collection(DB.CLIENT_DATA).updateOne(
+			{ _id: `faq_stats_${faqId}` },
+			{ 
+				$inc: { 
+					usageCount: 1,
+					[`categories.${foundFAQ.category}`]: 1
+				},
+				$set: {
+					lastUsed: now,
+					question: foundFAQ.question,
+					category: foundFAQ.category
+				},
+				$push: {
+					usageHistory: {
+						userId: msg.author.id,
+						username: msg.author.username,
+						timestamp: now
+					}
+				}
+			},
+			{ upsert: true }
+		);
+
 		const embed = new EmbedBuilder()
 			.setTitle(foundFAQ.question)
 			.setDescription(foundFAQ.answer)
@@ -104,8 +213,7 @@ async function handleFAQResponse(msg: Message): Promise<void> {
 			.setTimestamp();
 
 		if (foundFAQ.link) {
-			embed.addFields(
-				{ name: 'For more details', value: foundFAQ.link });
+			embed.addFields({ name: 'For more details', value: foundFAQ.link });
 		}
 
 		embed.addFields({ name: 'Did you find this response helpful?', value: '👍 Yes | 👎 No' });
@@ -115,31 +223,34 @@ async function handleFAQResponse(msg: Message): Promise<void> {
 			embeds: [embed]
 		});
 
-		// React with thumbs up and thumbs down.
 		await reply.react('👍');
 		await reply.react('👎');
 
-		// Create a reaction collector
 		const filter = (reaction: any, user: any) =>
 			['👍', '👎'].includes(reaction.emoji.name) && user.id === msg.author.id;
 		const collector = reply.createReactionCollector({ filter, time: 60000 });
 
 		collector.on('collect', async (reaction) => {
-			let feedbackResponse = '';
+			// Track feedback on FAQ
+			const feedback = reaction.emoji.name === '👍' ? 'positive' : 'negative';
+			await msg.client.mongo.collection(DB.CLIENT_DATA).updateOne(
+				{ _id: `faq_stats_${faqId}` },
+				{ 
+					$inc: { [`feedback.${feedback}`]: 1 } 
+				}
+			);
 			
 			if (reaction.emoji.name === '👍') {
 				feedbackResponse = 'Great! Glad you found it helpful!';
 				await msg.reply(feedbackResponse);
 			} else if (reaction.emoji.name === '👎') {
-				feedbackResponse = 'Sorry that you didn\'t find it helpful. The DevOps team will continue improving the answers to ensure satisfaction.';
-				await msg.reply(feedbackResponse);
+				await msg.reply("Sorry that you didn't find it helpful. The DevOps team will continue improving the answers to ensure satisfaction.");
 			}
-
-			// Lock reactions to avoid people SPAMMING REACTIONS!
 			await reply.reactions.removeAll();
 			collector.stop();
 		});
 	}
+	/* User can ask up to 5 questions per minute before they are rate limited */
 }
 
 async function handleExpDetract(msg: Message | PartialMessage) {
