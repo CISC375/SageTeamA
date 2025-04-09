@@ -47,7 +47,7 @@ export default class extends Command {
         const showDetails = interaction.options.getBoolean('showdetails') || false;
         
         // Set up handler for category selection
-        this.setupAnalyticsHandler(interaction.client);
+        this.setupAnalyticsHandler(interaction.client, showDetails);
         
         // Fetch categories from the database
         const categories = await (this.constructor as typeof Command & { getCategories: Function })
@@ -83,7 +83,7 @@ export default class extends Command {
         });
     }
     
-    private setupAnalyticsHandler(client: any) {
+    private setupAnalyticsHandler(client: any, showDetails: boolean) {
         // Remove any existing listener with the same name to prevent duplicates
         const existingListeners = client.listeners(Events.InteractionCreate);
         for (const listener of existingListeners) {
@@ -100,7 +100,7 @@ export default class extends Command {
             }
             
             // Process the category selection
-            await this.handleCategorySelection(interaction);
+            await this.handleCategorySelection(interaction, showDetails);
             
             // Clean up the listener after processing
             setTimeout(() => {
@@ -115,19 +115,10 @@ export default class extends Command {
         client.on(Events.InteractionCreate, analyticsHandler);
     }
     
-    private async handleCategorySelection(interaction: StringSelectMenuInteraction) {
+    private async handleCategorySelection(interaction: StringSelectMenuInteraction, showDetails: boolean) {
         await interaction.deferUpdate();
         
         const filterCategory = interaction.values[0];
-        
-        // Get the showdetails option from the original command
-        let showDetails = false;
-        if (interaction.message && interaction.message.interaction) {
-            const originalInteraction = interaction.message.interaction;
-            if (originalInteraction.commandName === 'faqanalytics') {
-                showDetails = false; // Default value since we can't easily access the original options
-            }
-        }
         
         // Create the database filter
         const dbFilter = (filterCategory && filterCategory !== 'all') ? 
