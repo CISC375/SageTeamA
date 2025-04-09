@@ -189,6 +189,9 @@ export async function loadCommands(bot: Client): Promise<void> {
 	const commandFiles = readdirRecursive(`${__dirname}/../commands`).filter(file => file.endsWith('.js'));
 
 	const awaitedCmds: Promise<ApplicationCommand>[] = [];
+	
+	// Store custom options for specific commands
+	const customCommandOptions = {};
 
 	for (const file of commandFiles) {
 		const commandModule = await import(file);
@@ -215,10 +218,13 @@ export async function loadCommands(bot: Client): Promise<void> {
 
 		const guildCmd = commands.cache.find(cmd => cmd.name === command.name);
 
+		// Use custom options if available
+		const options = customCommandOptions[name] || command?.options || [];
+		
 		const cmdData = {
 			name: command.name,
 			description: command.description,
-			options: command?.options || [],
+			options: options,
 			type: command.type || ApplicationCommandType.ChatInput,
 			defaultPermission: false
 		} as ApplicationCommandDataResolvable;
