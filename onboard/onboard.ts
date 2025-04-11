@@ -5,7 +5,7 @@ import nodemailer from 'nodemailer';
 import { MongoClient } from 'mongodb';
 import { SageUser } from '@lib/types/SageUser';
 import { Course } from '@lib/types/Course';
-import { BOT, DB, EMAIL, GUILDS, ROLES, FIRST_LEVEL } from '@root/config';
+import { BOT, DB, EMAIL, GUILDS, ROLES, FIRST_LEVEL } from '../config';
 
 const MESSAGE = `<!DOCTYPE html>
 <html>

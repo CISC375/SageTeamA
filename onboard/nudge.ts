@@ -2,7 +2,7 @@ import 'module-alias/register';
 import { MongoClient, ObjectID } from 'mongodb';
 import nodemailer from 'nodemailer';
 import { SageUser } from '@lib/types/SageUser';
-import { DB, BOT, EMAIL, GUILDS } from '@root/config';
+import { DB, BOT, EMAIL, GUILDS } from '../config';
 
 const MESSAGE = `<!DOCTYPE html>
 <html>
