@@ -76,7 +76,7 @@ export async function setupCategoryHandler(client) {
 				await deleteQuestion(interaction);
 				setTimeout(() => {
 					client.removeListener(Events.InteractionCreate, interactionListener);
-					console.log('Removed listener for category selection.');
+					// console.log('Removed listener for category selection.');
 				}, 1000);
 			} else if (interaction.customId === 'cancel_delete') {
 				await interaction.update({
@@ -89,7 +89,7 @@ export async function setupCategoryHandler(client) {
 				});
 				setTimeout(() => {
 					client.removeListener(Events.InteractionCreate, interactionListener);
-					console.log('Removed listener for category selection.');
+					// console.log('Removed listener for category selection.');
 				}, 1000);
 			}
 		}

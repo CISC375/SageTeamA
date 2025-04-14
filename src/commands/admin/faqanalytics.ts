@@ -1,7 +1,8 @@
 import { ADMIN_PERMS } from '@lib/permissions';
 import { Command } from '@lib/types/Command';
 import { ApplicationCommandOptionData, ApplicationCommandOptionType, ApplicationCommandPermissions, 
-    ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
+    ChatInputCommandInteraction, EmbedBuilder, Events,
+    ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuInteraction } from 'discord.js';
 import { DB } from '@root/config';
 
 export default class extends Command {
@@ -10,20 +11,30 @@ export default class extends Command {
     runInDM = false;
     permissions: ApplicationCommandPermissions[] = [ADMIN_PERMS];
 
+    // Static method to get categories from the database
+    static async getCategories(client: any): Promise<string[]> {
+        if (!client || !client.mongo) {
+            return [];
+        }
+        
+        try {
+            // Fetch distinct categories from the FAQs collection
+            const categories = await client.mongo.collection(DB.FAQS)
+                .distinct('category');
+            
+            // Filter to valid string categories
+            return Array.isArray(categories) 
+                ? categories.filter(cat => cat && typeof cat === 'string')
+                : [];
+                
+        } catch (error) {
+            console.error('Error fetching FAQ categories:', error);
+            return [];
+        }
+    }
+
+    // Only the showdetails option in the slash command
     options: ApplicationCommandOptionData[] = [
-        {
-            name: 'filter',
-            description: 'Choose a category to filter by',
-            type: ApplicationCommandOptionType.String,
-            required: false,
-            choices: [
-                { name: 'Show All FAQs', value: 'all' },
-                { name: 'Job/Interview', value: 'Job/Interview' },
-                { name: 'Class Registration', value: 'Class Registration' },
-                { name: 'General', value: 'General' },
-                { name: 'Server Questions', value: 'Server Questions' }
-            ]
-        },
         {
             name: 'showdetails',
             description: 'Show detailed stats for individual FAQs',
@@ -33,10 +44,81 @@ export default class extends Command {
     ];
 
     async run(interaction: ChatInputCommandInteraction): Promise<void> {
-        await interaction.deferReply({ ephemeral: true });
-        
-        const filterCategory = interaction.options.getString('filter');
         const showDetails = interaction.options.getBoolean('showdetails') || false;
+        
+        // Set up handler for category selection
+        this.setupAnalyticsHandler(interaction.client, showDetails);
+        
+        // Fetch categories from the database
+        const categories = await (this.constructor as typeof Command & { getCategories: Function })
+            .getCategories(interaction.client);
+        
+        // Create select menu options with Show All first
+        const categoryOptions = [
+            { label: 'Show All FAQs', value: 'all' }
+        ];
+        
+        // Add each category as an option
+        if (categories && categories.length > 0) {
+            categories.forEach(category => {
+                categoryOptions.push({ label: category, value: category });
+            });
+        }
+        
+        // Create a select menu for categories
+        const categorySelectMenu = new StringSelectMenuBuilder()
+            .setCustomId('faq_analytics_category')
+            .setPlaceholder('Select a category to filter by')
+            .addOptions(categoryOptions);
+        
+        // Create an action row with the select menu
+        const row = new ActionRowBuilder<StringSelectMenuBuilder>()
+            .addComponents(categorySelectMenu);
+        
+        // Send the initial response with the category dropdown
+        await interaction.reply({
+            content: 'Select a category to view analytics:',
+            components: [row],
+            ephemeral: true
+        });
+    }
+    
+    private setupAnalyticsHandler(client: any, showDetails: boolean) {
+        // Remove any existing listener with the same name to prevent duplicates
+        const existingListeners = client.listeners(Events.InteractionCreate);
+        for (const listener of existingListeners) {
+            if (listener.name === 'faqAnalyticsHandler') {
+                client.removeListener(Events.InteractionCreate, listener);
+            }
+        }
+        
+        // Create a named function so we can reference it later
+        const analyticsHandler = async (interaction: any) => {
+            // Only handle string select menus with our custom ID
+            if (!interaction.isStringSelectMenu() || interaction.customId !== 'faq_analytics_category') {
+                return;
+            }
+            
+            // Process the category selection
+            await this.handleCategorySelection(interaction, showDetails);
+            
+            // Clean up the listener after processing
+            setTimeout(() => {
+                client.removeListener(Events.InteractionCreate, analyticsHandler);
+            }, 1000);
+        };
+        
+        // Name the function for identification
+        Object.defineProperty(analyticsHandler, 'name', { value: 'faqAnalyticsHandler' });
+        
+        // Add the listener
+        client.on(Events.InteractionCreate, analyticsHandler);
+    }
+    
+    private async handleCategorySelection(interaction: StringSelectMenuInteraction, showDetails: boolean) {
+        await interaction.deferUpdate();
+        
+        const filterCategory = interaction.values[0];
         
         // Create the database filter
         const dbFilter = (filterCategory && filterCategory !== 'all') ? 
@@ -49,7 +131,10 @@ export default class extends Command {
             .toArray();
         
         if (!faqStats || faqStats.length === 0) {
-            await interaction.editReply({ content: 'No FAQ usage statistics found.' });
+            await interaction.editReply({ 
+                content: 'No FAQ usage statistics found for the selected category.',
+                components: [] // No components/dropdowns in the response
+            });
             return;
         }
         
@@ -58,7 +143,7 @@ export default class extends Command {
         
         // Create summary embed
         const embed = new EmbedBuilder()
-            .setTitle('FAQ Usage Analytics')
+            .setTitle(`FAQ Usage Analytics ${filterCategory !== 'all' ? `- ${filterCategory}` : ''}`)
             .setColor('#00AAFF')
             .setTimestamp();
         
@@ -131,6 +216,10 @@ export default class extends Command {
             embed.addFields({ name: 'Top FAQ Details', value: detailedStats || 'No detailed data available' });
         }
         
-        await interaction.editReply({ embeds: [embed] });
+        await interaction.editReply({ 
+            content: null,
+            embeds: [embed],
+            components: [] // No components/dropdowns in the response
+        });
     }
 } 
