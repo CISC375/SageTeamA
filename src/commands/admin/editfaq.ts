@@ -47,16 +47,25 @@ export default class extends Command {
 				}))
 			);
 
-		// Create an action row and add the select menu to it
-		const row
-			= new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-				categorySelectMenu
-			);
+		// Create a button to cancel the edition process
+		const cancelButton = new ButtonBuilder()
+			.setCustomId('cancel_modify')
+			.setLabel('Cancel')
+			.setStyle(ButtonStyle.Secondary);
 
-		// Send a reply with the category select menu
+		// Create an action row with the select menu and cancel button
+		const categoryRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+			categorySelectMenu
+		);
+
+		const cancelRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+			cancelButton
+		);
+
+		// Send a reply with the category select menu and cancel button
 		await interaction.reply({
 			content: 'Select a category to edit questions from:',
-			components: [row],
+			components: [categoryRow, cancelRow],
 			ephemeral: true
 		});
 		return;
@@ -131,16 +140,26 @@ export async function handleCategorySelection(
 				}))
 			);
 
-		// Create an action row and add the select menu to it
-		const row
+		// Create a button to cancel the edition process
+		const cancelButton = new ButtonBuilder()
+			.setCustomId('cancel_modify')
+			.setLabel('Cancel')
+			.setStyle(ButtonStyle.Secondary);
+
+		// Create an action row with the select menu
+		const subCategoryRow
 			= new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
 				subCategoryMenu
 			);
 
-		// Update the reply with the subcategory select menu
+		const cancelRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+				cancelButton
+			);
+
+		// Update the reply with the subcategory select menu and cancel button
 		await interaction.editReply({
 			content: `You selected **${selectedCategory}**. Now select a subcategory:`,
-			components: [row]
+			components: [subCategoryRow, cancelRow]
 		});
 	} else {
 		await showQuestions(interaction, selectedCategory);
@@ -187,15 +206,25 @@ async function showQuestions(
 			}))
 		);
 
-	// Create an action row and add the select menu to it
-	const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+	// Create a button to cancel the edition process
+	const cancelButton = new ButtonBuilder()
+		.setCustomId('cancel_modify')
+		.setLabel('Cancel')
+		.setStyle(ButtonStyle.Secondary);
+
+	// Create an action row with the select menu and cancel button
+	const questionRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
 		questionMenu
 	);
 
-	// Update the reply with the question select menu
+	const cancelRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+		cancelButton
+	);
+
+	// Update the reply with the question select menu and cancel button
 	await interaction.editReply({
 		content: `Select a question to edit from **${category}**:`,
-		components: [row]
+		components: [questionRow, cancelRow]
 	});
 }
 
