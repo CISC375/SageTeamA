@@ -4,7 +4,7 @@ import { DatabaseError } from '@lib/types/errors';
 import { CHANNELS, DB, ROLES, GUILDS } from '@root/config';
 import { SageUser } from '@lib/types/SageUser';
 import { calcNeededExp } from '@lib/utils/generalUtils';
-//import {levenshteinDistance } from '@lib/utils/levenshtein'
+// import {levenshteinDistance } from '@lib/utils/levenshtein'
 
 // Rate limit settings
 const MAX_COMMANDS = 5; // 5 questions per minute
@@ -32,20 +32,20 @@ async function register(bot: Client): Promise<void> {
 	bot.on('messageCreate', async msg => {
 		// Ignore all bot messages right away
 		if (msg.author.bot) return;
-	
+
 		// Rate limiting logic for messages only
 		const userId = msg.author.id;
 		const now = Date.now();
-		let userRateLimit = rateLimits.get(userId) || { timestamps: [] };
-	
+		const userRateLimit = rateLimits.get(userId) || { timestamps: [] };
+
 		// Filter out timestamps older than 1 minute
 		userRateLimit.timestamps = userRateLimit.timestamps.filter(ts => now - ts < TIME_WINDOW);
-	
+
 		// Check if user has hit the limit
 		if (userRateLimit.timestamps.length >= MAX_COMMANDS) {
 			const timeUntilReset = ((TIME_WINDOW - (now - userRateLimit.timestamps[0])) / 1000).toFixed(1);
 			const lastWarning = userRateLimit.lastWarning || 0;
-	
+
 			if (now - lastWarning >= WARNING_COOLDOWN) {
 				await msg.reply(`You're asking too many questions! Please wait ${timeUntilReset} seconds before asking another one.`);
 				userRateLimit.lastWarning = now;
@@ -53,10 +53,10 @@ async function register(bot: Client): Promise<void> {
 			}
 			return; // Stop further processing
 		}
-	
+
 		// Update the Map only if FAQ processing succeeds (moved into handleFAQResponse)
 		rateLimits.set(userId, userRateLimit);
-	
+
 		// Original processing
 		countMessages(msg).catch(async error => bot.emit('error', error));
 		await handleFAQResponse(msg, now); // Pass 'now' to handleFAQResponse
@@ -115,29 +115,38 @@ function getTokenSimilarity(userSet: Set<string>, faqSet: Set<string>): number {
 
 
 async function handleFAQResponse(msg: Message, now: number): Promise<void> {
-    if (msg.author.bot) return;
+	if (msg.author.bot) return;
 
-    const cooldown = 3 * 1000;
-    const cooldownKey = `faqCooldown_${msg.author.id}`;
-    const cooldownEnd = await msg.client.mongo.collection(DB.CLIENT_DATA).findOne({ _id: cooldownKey });
+	// Check if auto-responses are disabled for this channel
+	const sageData = await msg.client.mongo.collection(DB.CLIENT_DATA).findOne({ _id: msg.client.user.id });
+	const disabledChannels = sageData?.disabledAutoResponseChannels || [];
 
-    if (cooldownEnd && cooldownEnd.value > now) {
-        const remainingTime = Math.ceil((cooldownEnd.value - now) / 1000);
-        await msg.reply(`You're asking too quickly! Please wait ${remainingTime} seconds before asking another question.`);
-        return; // Exit without counting this toward the rate limit
-    }
+	// If this channel is in the disabled list, don't process auto-responses
+	if (disabledChannels.includes(msg.channel.id)) {
+		return;
+	}
 
-    // If we get here, the message is processed, so count it toward the rate limit
-    let userRateLimit = rateLimits.get(msg.author.id)!; // Already set in messageCreate
-    userRateLimit.timestamps.push(now);
-    rateLimits.set(msg.author.id, userRateLimit);
+	const cooldown = 3 * 1000;
+	const cooldownKey = `faqCooldown_${msg.author.id}`;
+	const cooldownEnd = await msg.client.mongo.collection(DB.CLIENT_DATA).findOne({ _id: cooldownKey });
 
-    // Set the FAQ cooldown
-    await msg.client.mongo.collection(DB.CLIENT_DATA).updateOne(
-        { _id: cooldownKey },
-        { $set: { value: now + cooldown } },
-        { upsert: true }
-    );
+	if (cooldownEnd && cooldownEnd.value > now) {
+		const remainingTime = Math.ceil((cooldownEnd.value - now) / 1000);
+		await msg.reply(`You're asking too quickly! Please wait ${remainingTime} seconds before asking another question.`);
+		return; // Exit without counting this toward the rate limit
+	}
+
+	// If we get here, the message is processed, so count it toward the rate limit
+	const userRateLimit = rateLimits.get(msg.author.id)!; // Already set in messageCreate
+	userRateLimit.timestamps.push(now);
+	rateLimits.set(msg.author.id, userRateLimit);
+
+	// Set the FAQ cooldown
+	await msg.client.mongo.collection(DB.CLIENT_DATA).updateOne(
+		{ _id: cooldownKey },
+		{ $set: { value: now + cooldown } },
+		{ upsert: true }
+	);
 
 	const userQuestion = msg.content.trim().toLowerCase();
 	const faqs = await msg.client.mongo.collection(DB.FAQS).find().toArray();
@@ -185,8 +194,8 @@ async function handleFAQResponse(msg: Message, now: number): Promise<void> {
 		const faqId = foundFAQ._id || foundFAQ.question;
 		await msg.client.mongo.collection(DB.CLIENT_DATA).updateOne(
 			{ _id: `faq_stats_${faqId}` },
-			{ 
-				$inc: { 
+			{
+				$inc: {
 					usageCount: 1,
 					[`categories.${foundFAQ.category}`]: 1
 				},
@@ -235,11 +244,11 @@ async function handleFAQResponse(msg: Message, now: number): Promise<void> {
 			const feedback = reaction.emoji.name === '👍' ? 'positive' : 'negative';
 			await msg.client.mongo.collection(DB.CLIENT_DATA).updateOne(
 				{ _id: `faq_stats_${faqId}` },
-				{ 
-					$inc: { [`feedback.${feedback}`]: 1 } 
+				{
+					$inc: { [`feedback.${feedback}`]: 1 }
 				}
 			);
-			
+
 			if (reaction.emoji.name === '👍') {
 				await msg.reply('Great! Glad you found it helpful!');
 			} else if (reaction.emoji.name === '👎') {

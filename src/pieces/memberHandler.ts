@@ -88,3 +88,4 @@ async function register(bot: Client): Promise<void> {
 }
 
 export default register;
+

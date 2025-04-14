@@ -6,4 +6,9 @@ export interface SageData {
 		name: string;
 	};
 	commandSettings: Array<{ name: string, enabled: boolean }>;
+
+	/**
+	 * Array of channel IDs where auto-responses are disabled
+	 */
+	disabledAutoResponseChannels?: string[];
 }
