@@ -108,7 +108,6 @@ export async function handleCategorySelection(interaction) {
 		.setCustomId('select_category')
 		.setPlaceholder('Select a category')
 		.addOptions(
-
 			topCategories.map((category) => ({
 				label: category,
 				value: category
@@ -217,7 +216,12 @@ export async function handleSubcategorySelection(
 export async function handleQuestionSelection(
 	interaction: StringSelectMenuInteraction
 ) {
-	const selectedSubcategory = interaction.values ? interaction.values[0] : userStates[interaction.user.id].subcategory;
+	const userState = userStates[interaction.user.id]
+
+	const selectedSubcategory =
+		interaction.values?.[0] ??
+		userState.subcategory ??
+		userState.category;
 
 	await showQuestions(interaction, selectedSubcategory);
 }
@@ -236,11 +240,11 @@ async function showQuestions(
 
 	// If no questions are found, send a message
 	if (questions.length === 0) {
-		await interaction.editReply({
-			content: `No questions found for **${category}**.`,
-			components: []
-		});
-		return;
+		const errorEmbed = new EmbedBuilder()
+			.setColor('#FF0000')
+			.setTitle('Error')
+			.setDescription(`No questions found for **${category}**.`);
+		return interaction.editReply({ content: '', embeds: [errorEmbed], components: [] });
 	}
 
 	// Create a select menu for questions

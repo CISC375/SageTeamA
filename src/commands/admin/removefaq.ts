@@ -13,6 +13,8 @@ import {
 } from 'discord.js';
 import { DB } from '@root/config';
 
+const userStates = new Map<string, { category: string; subcategory?: string; question?: string }>();
+
 export default class extends Command {
 
 	description = 'Removes existing frequently asked questions from FAQ list.';
@@ -23,69 +25,37 @@ export default class extends Command {
 		// Set up the category handler to process category selection
 		setupCategoryHandler(interaction.client);
 
-		// Retrieve distinct categories from the database
-		const categories = await interaction.client.mongo
-			.collection(DB.FAQS)
-			.distinct('category');
-
-		// Extract top-level categories
-		const topCategories = categories
-			.map((cat) => cat.split('/')[0])
-			.filter((value, index, self) => self.indexOf(value) === index);
-
-		// Create a select menu for categories
-		const categorySelectMenu = new StringSelectMenuBuilder()
-			.setCustomId('select_category')
-			.setPlaceholder('Select a category')
-			.addOptions(
-				topCategories.map((category) => ({
-					label: category,
-					value: category
-				}))
-			);
-
-		// Create a button to cancel the deletion process
-		const cancelButton = new ButtonBuilder()
-			.setCustomId('cancel_delete')
-			.setLabel('Cancel')
-			.setStyle(ButtonStyle.Secondary);
-
-		// Create an action row with the select menu and cancel button
-		const categoryRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-			categorySelectMenu
-		);
-
-		const cancelRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-			cancelButton
-		);
-
-		// Send a reply with the category select menu
-		await interaction.reply({
-			content: 'Select a category to delete questions from:',
-			components: [categoryRow, cancelRow],
-			ephemeral: true
-		});
+		handleCategorySelection(interaction);
 		return;
 	}
 
 }
 
 export async function setupCategoryHandler(client) {
+	// Listener function to handle all relevant user interactions
 	const interactionListener = async (interaction) => {
+		const userId = interaction.user.id;
+
+		// Handle select menu interactions
 		if (interaction.isStringSelectMenu()) {
 			if (interaction.customId === 'select_category') {
-				await handleCategorySelection(interaction);
-			} else if (interaction.customId === 'select_subcategory') {
+				userStates[userId] = { category: interaction.values[0] };
 				await handleSubcategorySelection(interaction);
-			} else if (interaction.customId === 'select_question') {
+			} else if (interaction.customId === 'select_subcategory') {
+				userStates[userId] = { ...userStates[userId], subcategory: interaction.values[0] };
 				await handleQuestionSelection(interaction);
+			} else if (interaction.customId === 'select_question') {
+				userStates[userId] = { ...userStates[userId], question: interaction.values[0] };
+				await handleQuestionConfirmation(interaction);
 			}
-		} else if (interaction.isButton()) {
+		}
+		// Handle button interactions
+		else if (interaction.isButton()) {
 			if (interaction.customId === 'confirm_delete') {
 				await deleteQuestion(interaction);
+				// Remove listener after a short delay to prevent duplicates
 				setTimeout(() => {
 					client.removeListener(Events.InteractionCreate, interactionListener);
-					// console.log('Removed listener for category selection.');
 				}, 1000);
 			} else if (interaction.customId === 'cancel_delete') {
 				await interaction.update({
@@ -96,20 +66,88 @@ export async function setupCategoryHandler(client) {
 						.setDescription(`The question has not been removed.`)],
 					components: []
 				});
+				// Remove listener after a short delay to prevent duplicates
 				setTimeout(() => {
 					client.removeListener(Events.InteractionCreate, interactionListener);
-					// console.log('Removed listener for category selection.');
 				}, 1000);
+			} else if (interaction.customId === 'back_to_previous') {
+				const userState = userStates[userId];
+				console.log(`category: ${userState.category}, subcategory: ${userState.subcategory}, question: ${userState.question}`);
+			
+				if (userState.question) {
+					delete userState.question;
+					await handleQuestionSelection(interaction);
+				} else if (userState.subcategory) {
+					delete userState.subcategory;
+					await handleSubcategorySelection(interaction);
+				} else if (userState.category) {
+					delete userState.category;
+					await handleCategorySelection(interaction);
+				}
 			}
 		}
 	};
 	client.on(Events.InteractionCreate, interactionListener);
 }
 
-export async function handleCategorySelection(
+export async function handleCategorySelection(interaction) {
+	// Retrieve distinct categories from the database
+	const categories = await interaction.client.mongo
+		.collection(DB.FAQS)
+		.distinct('category');
+
+	// Extract top-level categories
+	const topCategories = categories
+		.map((cat) => cat.split('/')[0])
+		.filter((value, index, self) => self.indexOf(value) === index);
+
+	// Create a select menu for categories
+	const categorySelectMenu = new StringSelectMenuBuilder()
+		.setCustomId('select_category')
+		.setPlaceholder('Select a category')
+		.addOptions(
+			topCategories.map((category) => ({
+				label: category,
+				value: category
+			}))
+		);
+
+	// Create a button to cancel the deletion process
+	const cancelButton = new ButtonBuilder()
+		.setCustomId('cancel_delete')
+		.setLabel('Cancel')
+		.setStyle(ButtonStyle.Secondary);
+
+	// Create an action row with the select menu and cancel button
+	const categoryRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+		categorySelectMenu
+	);
+
+	const cancelRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+		cancelButton
+	);
+
+	// Send a reply with the category select menu and cancel button
+	if (interaction.isButton()) {
+		await interaction.update({
+			content: 'Select a category to delete questions from:',
+			embeds: [],
+			components: [categoryRow, cancelRow]
+		});
+	} else {
+		await interaction.reply({
+			content: 'Select a category to delete questions from:',
+			components: [categoryRow, cancelRow],
+			embeds: [],
+			ephemeral: true
+		});
+	}
+}
+
+export async function handleSubcategorySelection(
 	interaction: StringSelectMenuInteraction
 ) {
-	const selectedCategory = interaction.values[0];
+	const selectedCategory = interaction.values ? interaction.values[0] : userStates[interaction.user.id].category;
 
 	// Retrieve distinct categories from the database
 	const categories = await interaction.client.mongo
@@ -139,6 +177,12 @@ export async function handleCategorySelection(
 				}))
 			);
 
+		// Create a back button to return to the previous step
+		const backButton = new ButtonBuilder()
+		.setCustomId('back_to_previous')
+		.setLabel('←')
+		.setStyle(ButtonStyle.Secondary);
+
 		// Create a button to cancel the deletion process
 		const cancelButton = new ButtonBuilder()
 			.setCustomId('cancel_delete')
@@ -151,24 +195,31 @@ export async function handleCategorySelection(
 				subCategoryMenu
 			);
 
-		const cancelRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+		const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+				backButton,
 				cancelButton
 			);
 		
 		// Update the reply with the subcategory select menu and cancel button
 		await interaction.editReply({
 			content: `You selected **${selectedCategory}**. Now select a subcategory:`,
-			components: [subCategoryRow, cancelRow]
+			embeds: [],
+			components: [subCategoryRow, buttonRow]
 		});
 	} else {
 		await showQuestions(interaction, selectedCategory);
 	}
 }
 
-export async function handleSubcategorySelection(
+export async function handleQuestionSelection(
 	interaction: StringSelectMenuInteraction
 ) {
-	const selectedSubcategory = interaction.values[0];
+	const userState = userStates[interaction.user.id]
+
+	const selectedSubcategory =
+		interaction.values?.[0] ??
+		userState.subcategory ??
+		userState.category;
 
 	await showQuestions(interaction, selectedSubcategory);
 }
@@ -205,6 +256,12 @@ async function showQuestions(
 			}))
 		);
 
+	// Create a back button to return to the previous step
+	const backButton = new ButtonBuilder()
+		.setCustomId('back_to_previous')
+		.setLabel('←')
+		.setStyle(ButtonStyle.Secondary);
+
 	// Create a button to cancel the deletion process
 	const cancelButton = new ButtonBuilder()
 		.setCustomId('cancel_delete')
@@ -216,21 +273,23 @@ async function showQuestions(
 		questionMenu
 	);
 
-	const cancelRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+	const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+		backButton,
 		cancelButton
 	);
 
 	// Update the reply with the question select menu
 	await interaction.editReply({
 		content: `Select a question to delete from **${category}**:`,
-		components: [questionRow, cancelRow]
+		embeds: [],
+		components: [questionRow, buttonRow]
 	});
 }
 
-export async function handleQuestionSelection(
+export async function handleQuestionConfirmation(
 	interaction: StringSelectMenuInteraction
 ) {
-	const selectedQuestion = interaction.values[0];
+	const selectedQuestion = interaction.values ? interaction.values[0] : userStates[interaction.user.id].question;
 
 	// Create an embed to confirm the question deletion
 	const confirmEmbed = new EmbedBuilder()
@@ -246,15 +305,15 @@ export async function handleQuestionSelection(
 		.setLabel('Yes')
 		.setStyle(ButtonStyle.Danger);
 
-	const cancelButton = new ButtonBuilder()
-		.setCustomId('cancel_delete')
-		.setLabel('Cancel')
+	const backButton = new ButtonBuilder()
+		.setCustomId('back_to_previous')
+		.setLabel('No')
 		.setStyle(ButtonStyle.Secondary);
 
 	// Create an action row with the buttons
 	const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
 		confirmButton,
-		cancelButton
+		backButton
 	);
 
 	// Update the interaction with the confirmation embed and buttons
