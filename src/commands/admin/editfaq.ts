@@ -198,8 +198,8 @@ export async function handleSubcategorySelection(
 			);
 
 		const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-			backButton,
-			cancelButton
+			cancelButton,
+			backButton
 		);
 
 		// Update the reply with the subcategory select menu and cancel button
@@ -276,8 +276,8 @@ async function showQuestions(
 	);
 
 	const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-		backButton,
-		cancelButton
+		cancelButton,
+		backButton
 	);
 
 	// Update the reply with the question select menu and cancel button
