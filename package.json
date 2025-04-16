@@ -36,22 +36,24 @@
   },
   "homepage": "https://github.com/ud-cis-discord/SageV2",
   "dependencies": {
-    "@octokit/rest": "^18.3.5",
+    "@discordjs/node-pre-gyp": "0.4.5",
+    "@octokit/rest": "^21.1.1",
     "axios": "^1.4.0",
-    "canvas": "^2.11.2",
+    "canvas": "^3.1.0",
     "console-stamp": "^3.0.2",
     "discord.js": "^14.16.3",
-    "@discordjs/node-pre-gyp": "0.4.5",
+    "dotenv": "^16.3.1",
+    "mime-db": "^1.54.0",
     "module-alias": "^2.2.2",
     "moment": "^2.29.1",
     "mongodb": "^3.6.3",
+    "node": "^23.11.0",
     "node-cron": "^2.0.3",
     "node-fetch": "^2.6.1",
     "nodemailer": "^6.4.17",
-    "parse-duration": "^0.4.4",
+    "parse-duration": "^2.1.4",
     "pretty-ms": "^7.0.1",
-    "sequelize": "^6.35.1",
-    "dotenv": "^16.3.1"
+    "sequelize": "^6.35.1"
   },
   "_moduleAliases": {
     "@root": "dist",
@@ -65,11 +67,11 @@
     "@types/node-cron": "^2.0.3",
     "@types/node-fetch": "^2.5.7",
     "@types/nodemailer": "^6.4.0",
+    "@types/sequelize": "^4.28.15",
     "@typescript-eslint/eslint-plugin": "^4.23.0",
     "@typescript-eslint/parser": "^4.23.0",
     "eslint": "^7.26.0",
     "tsc-watch": "^4.6.2",
-    "typescript": "^5.0.2",
-    "@types/sequelize": "^4.28.15"
+    "typescript": "^5.0.2"
   }
 }

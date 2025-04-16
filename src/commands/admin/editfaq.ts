@@ -16,6 +16,8 @@ import {
 } from 'discord.js';
 import { DB } from '@root/config';
 
+const userStates = new Map<string, { category: string; subcategory?: string; question?: string }>();
+
 export default class extends Command {
 
 	description = 'Edits existing frequently asked questions.';
@@ -26,57 +28,35 @@ export default class extends Command {
 		// Set up the category handler to process category selection
 		setupCategoryHandler(interaction.client);
 
-		// Retrieve distinct categories from the database
-		const categories = await interaction.client.mongo
-			.collection(DB.FAQS)
-			.distinct('category');
-
-		// Extract top-level categories
-		const topCategories = categories
-			.map((cat) => cat.split('/')[0])
-			.filter((value, index, self) => self.indexOf(value) === index);
-
-		// Create a select menu for categories
-		const categorySelectMenu = new StringSelectMenuBuilder()
-			.setCustomId('select_category')
-			.setPlaceholder('Select a category')
-			.addOptions(
-				topCategories.map((category) => ({
-					label: category,
-					value: category
-				}))
-			);
-
-		// Create an action row and add the select menu to it
-		const row
-			= new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-				categorySelectMenu
-			);
-
-		// Send a reply with the category select menu
-		await interaction.reply({
-			content: 'Select a category to edit questions from:',
-			components: [row],
-			ephemeral: true
-		});
+		handleCategorySelection(interaction);
 		return;
 	}
 
 }
 
 export async function setupCategoryHandler(client) {
+	// Listener function to handle all relevant user interactions
 	const interactionListener = async (interaction) => {
+		const userId = interaction.user.id;
+
+		// Handle select menu interactions
 		if (interaction.isStringSelectMenu()) {
 			if (interaction.customId === 'select_category') {
-				await handleCategorySelection(interaction);
-			} else if (interaction.customId === 'select_subcategory') {
+				userStates[userId] = { category: interaction.values[0] };
 				await handleSubcategorySelection(interaction);
-			} else if (interaction.customId === 'select_question') {
+			} else if (interaction.customId === 'select_subcategory') {
+				userStates[userId] = { ...userStates[userId], subcategory: interaction.values[0] };
 				await handleQuestionSelection(interaction);
+			} else if (interaction.customId === 'select_question') {
+				userStates[userId] = { ...userStates[userId], question: interaction.values[0] };
+				await handleQuestionConfirmation(interaction);
 			}
-		} else if (interaction.isButton()) {
+		}
+		// Handle button interactions
+		else if (interaction.isButton()) {
 			if (interaction.customId === 'modify_qna') {
 				await handleModifyQuestion(interaction);
+				// Remove listener after a short delay to prevent duplicates
 				setTimeout(() => {
 					client.removeListener(Events.InteractionCreate, interactionListener);
 				}, 1000);
@@ -89,19 +69,87 @@ export async function setupCategoryHandler(client) {
 						.setDescription(`The question has not been edited.`)],
 					components: []
 				});
+				// Remove listener after a short delay to prevent duplicates
 				setTimeout(() => {
 					client.removeListener(Events.InteractionCreate, interactionListener);
 				}, 1000);
+			} else if (interaction.customId === 'back_to_previous') {
+				const userState = userStates[userId];
+
+				if (userState.question) {
+					delete userState.question;
+					await handleQuestionSelection(interaction);
+				} else if (userState.subcategory) {
+					delete userState.subcategory;
+					await handleSubcategorySelection(interaction);
+				} else if (userState.category) {
+					delete userState.category;
+					await handleCategorySelection(interaction);
+				}
 			}
 		}
 	};
 	client.on(Events.InteractionCreate, interactionListener);
 }
 
-export async function handleCategorySelection(
+export async function handleCategorySelection(interaction) {
+	// Retrieve distinct categories from the database
+	const categories = await interaction.client.mongo
+		.collection(DB.FAQS)
+		.distinct('category');
+
+	// Extract top-level categories
+	const topCategories = categories
+		.map((cat) => cat.split('/')[0])
+		.filter((value, index, self) => self.indexOf(value) === index);
+
+	// Create a select menu for categories
+	const categorySelectMenu = new StringSelectMenuBuilder()
+		.setCustomId('select_category')
+		.setPlaceholder('Select a category')
+		.addOptions(
+			topCategories.map((category) => ({
+				label: category,
+				value: category
+			}))
+		);
+
+	// Create a button to cancel the edition process
+	const cancelButton = new ButtonBuilder()
+		.setCustomId('cancel_modify')
+		.setLabel('Cancel')
+		.setStyle(ButtonStyle.Secondary);
+
+	// Create ction rows with the select menu and cancel button
+	const categoryRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+		categorySelectMenu
+	);
+
+	const cancelRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+		cancelButton
+	);
+
+	// Send a reply with the category select menu and cancel button
+	if (interaction.isButton()) {
+		await interaction.update({
+			content: 'Select a category to edit questions from:',
+			embeds: [],
+			components: [categoryRow, cancelRow]
+		});
+	} else {
+		await interaction.reply({
+			content: 'Select a category to edit questions from:',
+			components: [categoryRow, cancelRow],
+			embeds: [],
+			ephemeral: true
+		});
+	}
+}
+
+export async function handleSubcategorySelection(
 	interaction: StringSelectMenuInteraction
 ) {
-	const selectedCategory = interaction.values[0];
+	const selectedCategory = interaction.values ? interaction.values[0] : userStates[interaction.user.id].category;
 
 	// Retrieve distinct categories from the database
 	const categories = await interaction.client.mongo
@@ -131,26 +179,49 @@ export async function handleCategorySelection(
 				}))
 			);
 
-		// Create an action row and add the select menu to it
-		const row
+		// Create a back button to return to the previous step
+		const backButton = new ButtonBuilder()
+			.setCustomId('back_to_previous')
+			.setLabel('←')
+			.setStyle(ButtonStyle.Secondary);
+
+		// Create a button to cancel the edition process
+		const cancelButton = new ButtonBuilder()
+			.setCustomId('cancel_modify')
+			.setLabel('Cancel')
+			.setStyle(ButtonStyle.Secondary);
+
+		// Create action rows with the select menu and buttons
+		const subCategoryRow
 			= new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
 				subCategoryMenu
 			);
 
-		// Update the reply with the subcategory select menu
+		const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+			cancelButton,
+			backButton
+		);
+
+		// Update the reply with the subcategory select menu and cancel button
 		await interaction.editReply({
 			content: `You selected **${selectedCategory}**. Now select a subcategory:`,
-			components: [row]
+			embeds: [],
+			components: [subCategoryRow, buttonRow]
 		});
 	} else {
 		await showQuestions(interaction, selectedCategory);
 	}
 }
 
-export async function handleSubcategorySelection(
+export async function handleQuestionSelection(
 	interaction: StringSelectMenuInteraction
 ) {
-	const selectedSubcategory = interaction.values[0];
+	const userState = userStates[interaction.user.id]
+
+	const selectedSubcategory =
+		interaction.values?.[0] ??
+		userState.subcategory ??
+		userState.category;
 
 	await showQuestions(interaction, selectedSubcategory);
 }
@@ -169,11 +240,11 @@ async function showQuestions(
 
 	// If no questions are found, send a message
 	if (questions.length === 0) {
-		await interaction.editReply({
-			content: `No questions found for **${category}**.`,
-			components: []
-		});
-		return;
+		const errorEmbed = new EmbedBuilder()
+			.setColor('#FF0000')
+			.setTitle('Error')
+			.setDescription(`No questions found for **${category}**.`);
+		return interaction.editReply({ content: '', embeds: [errorEmbed], components: [] });
 	}
 
 	// Create a select menu for questions
@@ -187,22 +258,40 @@ async function showQuestions(
 			}))
 		);
 
-	// Create an action row and add the select menu to it
-	const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+	// Create a back button to return to the previous step
+	const backButton = new ButtonBuilder()
+		.setCustomId('back_to_previous')
+		.setLabel('←')
+		.setStyle(ButtonStyle.Secondary);
+
+	// Create a button to cancel the edition process
+	const cancelButton = new ButtonBuilder()
+		.setCustomId('cancel_modify')
+		.setLabel('Cancel')
+		.setStyle(ButtonStyle.Secondary);
+
+	// Create actions row with the select menu and buttons
+	const questionRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
 		questionMenu
 	);
 
-	// Update the reply with the question select menu
+	const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+		cancelButton,
+		backButton
+	);
+
+	// Update the reply with the question select menu and cancel button
 	await interaction.editReply({
 		content: `Select a question to edit from **${category}**:`,
-		components: [row]
+		embeds: [],
+		components: [questionRow, buttonRow]
 	});
 }
 
-export async function handleQuestionSelection(
+export async function handleQuestionConfirmation(
 	interaction: StringSelectMenuInteraction
 ) {
-	const selectedQuestion = interaction.values[0];
+	const selectedQuestion = interaction.values ? interaction.values[0] : userStates[interaction.user.id].question;
 
 	// Create an embed to confirm the question modification
 	const confirmEmbed = new EmbedBuilder()
@@ -213,20 +302,20 @@ export async function handleQuestionSelection(
 		);
 
 	// Create buttons for confirmation and cancellation
+	const backButton = new ButtonBuilder()
+		.setCustomId('back_to_previous')
+		.setLabel('No')
+		.setStyle(ButtonStyle.Secondary);
+
 	const confirmButton = new ButtonBuilder()
 		.setCustomId('modify_qna')
 		.setLabel('Yes')
 		.setStyle(ButtonStyle.Danger);
 
-	const cancelButton = new ButtonBuilder()
-		.setCustomId('cancel_modify')
-		.setLabel('Cancel')
-		.setStyle(ButtonStyle.Secondary);
-
 	// Create an action row and add the buttons to it
 	const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
 		confirmButton,
-		cancelButton
+		backButton
 	);
 
 	// Update the reply with the confirmation embed and buttons
