@@ -74,9 +74,9 @@ export default class extends Command {
         // Build query based on options
         const query: any = {};
 
-        // By default, exclude questions that are admin commands (those starting with "/botresponses", etc.)
+        // By default, exclude admin commands from the export results
         if (!includeCommands) {
-            query.questionContent = { $not: /^\/(?:botresponses|exportresponses)/ };
+            query.questionContent = { $not: /^\/(?:faqstats|exportresponses)/ };
         }
 
         // Add timeframe filter

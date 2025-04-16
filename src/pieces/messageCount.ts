@@ -4,7 +4,6 @@ import { DatabaseError } from '@lib/types/errors';
 import { CHANNELS, DB, ROLES, GUILDS } from '@root/config';
 import { SageUser } from '@lib/types/SageUser';
 import { calcNeededExp } from '@lib/utils/generalUtils';
-import { logMessageQuestion } from '@lib/utils/responseLogger';
 //import {levenshteinDistance } from '@lib/utils/levenshtein'
 // import {levenshteinDistance } from '@lib/utils/levenshtein'
 
@@ -233,8 +232,7 @@ async function handleFAQResponse(msg: Message, now: number): Promise<void> {
 	}
 
 	if (foundFAQ) {
-		// Log this FAQ question in BOT_RESPONSES collection for botresponses command
-		await logMessageQuestion(msg, 'faq');
+		// No longer log to BOT_RESPONSES collection - using faq_stats directly instead
 		
 		// Track FAQ usage statistics
 		const faqId = foundFAQ._id || foundFAQ.question;

@@ -2,19 +2,6 @@ import { Client, Message, Interaction, User } from 'discord.js';
 import { DB } from '@root/config';
 
 /**
- * Interface for question tracking log entry
- */
-export interface BotResponseLog {
-  questionContent: string;
-  userId: string;
-  userName: string;
-  timestamp: Date;
-  channelId: string;
-  guildId: string;
-  responseType: 'faq' | 'command' | 'other';
-}
-
-/**
  * Logs a user question to the database for tracking
  * @param client Discord.js client with MongoDB connection
  * @param questionContent Content of the question
