@@ -268,11 +268,6 @@ export async function loadCommands(bot: Client): Promise<void> {
 async function runCommand(interaction: ChatInputCommandInteraction, bot: Client): Promise<unknown> {
 	const command = bot.commands.get(interaction.commandName);
 
-	// Only log regular user questions, not admin commands
-	if (!command.category || command.category !== 'admin') {
-		await logInteractionQuestion(interaction, 'command');
-	}
-
 	if (interaction.channel.type === ChannelType.GuildText && command.runInGuild === false) {
 		const responseContent = 'This command must be run in DMs, not public channels';
 		const response = await interaction.reply({
