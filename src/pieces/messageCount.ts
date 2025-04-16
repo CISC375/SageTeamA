@@ -4,6 +4,7 @@ import { DatabaseError } from '@lib/types/errors';
 import { CHANNELS, DB, ROLES, GUILDS } from '@root/config';
 import { SageUser } from '@lib/types/SageUser';
 import { calcNeededExp } from '@lib/utils/generalUtils';
+//import {levenshteinDistance } from '@lib/utils/levenshtein'
 // import {levenshteinDistance } from '@lib/utils/levenshtein'
 
 // Rate limit settings
@@ -231,6 +232,8 @@ async function handleFAQResponse(msg: Message, now: number): Promise<void> {
 	}
 
 	if (foundFAQ) {
+		// No longer log to BOT_RESPONSES collection - using faq_stats directly instead
+		
 		// Track FAQ usage statistics
 		const faqId = foundFAQ._id || foundFAQ.question;
 		await msg.client.mongo.collection(DB.CLIENT_DATA).updateOne(
@@ -291,7 +294,8 @@ async function handleFAQResponse(msg: Message, now: number): Promise<void> {
 			);
 
 			if (reaction.emoji.name === '👍') {
-				await msg.reply('Great! Glad you found it helpful!');
+				const feedbackResponse = 'Great! Glad you found it helpful!';
+				await msg.reply(feedbackResponse);
 			} else if (reaction.emoji.name === '👎') {
 				await msg.reply("Sorry that you didn't find it helpful. The DevOps team will continue improving the answers to ensure satisfaction.");
 			}
