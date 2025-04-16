@@ -4,7 +4,7 @@ import { DB } from '@root/config';
 import { ADMIN_PERMS } from '@lib/permissions';
 
 export default class extends Command {
-    description = 'Export question data to a CSV file';
+    description = 'Export FAQ usage statistics to a CSV file';
     permissions = [ADMIN_PERMS];
     options: ApplicationCommandOptionData[] = [
         {
@@ -33,50 +33,29 @@ export default class extends Command {
         },
         {
             name: 'user',
-            description: 'Export questions for a specific user',
+            description: 'Export FAQs used by a specific user',
             type: ApplicationCommandOptionType.User,
             required: false
         },
         {
-            name: 'type',
-            description: 'Filter by question type',
+            name: 'category',
+            description: 'Filter by FAQ category',
             type: ApplicationCommandOptionType.String,
-            required: false,
-            choices: [
-                {
-                    name: 'FAQ',
-                    value: 'faq'
-                },
-                {
-                    name: 'Command',
-                    value: 'command'
-                },
-                {
-                    name: 'Other',
-                    value: 'other'
-                }
-            ]
-        },
-        {
-            name: 'include_commands',
-            description: 'Include admin command queries in results',
-            type: ApplicationCommandOptionType.Boolean,
-            required: false,
+            required: false
         }
     ];
 
     async run(interaction: ChatInputCommandInteraction): Promise<InteractionResponse<boolean> | void> {
         const timeframe = interaction.options.getString('timeframe') || 'all';
         const user = interaction.options.getUser('user');
-        const type = interaction.options.getString('type');
-        const includeCommands = interaction.options.getBoolean('include_commands') || false;
+        const categoryFilter = interaction.options.getString('category');
 
         // Build query based on options
-        const query: any = {};
+        let query: any = { _id: { $regex: '^faq_stats_' } };
 
-        // By default, exclude admin commands from the export results
-        if (!includeCommands) {
-            query.questionContent = { $not: /^\/(?:faqstats|exportresponses)/ };
+        // Apply category filter if specified
+        if (categoryFilter) {
+            query.category = categoryFilter;
         }
 
         // Add timeframe filter
@@ -96,36 +75,42 @@ export default class extends Command {
                     break;
             }
             
-            query.firstAsked = { $gte: startDate };
+            query.lastUsed = { $gte: startDate.getTime() };
         }
-
-        // Add user filter
-        if (user) {
-            query['instances.userId'] = user.id;
-        }
-
-        // Add type filter
-        if (type) {
-            query.responseType = type;
-        }
-
-        // Get the questions from the database
-        const questions = await interaction.client.mongo.collection(DB.BOT_RESPONSES)
-            .find(query)
-            .sort({ count: -1 })
+        
+        // Apply user filter if specified
+        const userFilter = user ? { 'usageHistory.userId': user.id } : {};
+        
+        // Get FAQ statistics from database
+        let faqStats = await interaction.client.mongo.collection(DB.CLIENT_DATA)
+            .find({ ...query, ...userFilter })
             .toArray();
+            
+        // If using user filter, additional filtering may be needed
+        if (user && faqStats.length > 0) {
+            faqStats = faqStats.filter(stat => 
+                stat.usageHistory && 
+                stat.usageHistory.some(usage => usage.userId === user.id)
+            );
+            
+            // Recalculate usage counts for this specific user
+            faqStats.forEach(stat => {
+                const userInstances = stat.usageHistory.filter(usage => usage.userId === user.id);
+                stat.userCount = userInstances.length;
+            });
+        }
 
-        if (questions.length === 0) {
+        if (faqStats.length === 0) {
             return interaction.reply({
-                content: 'No questions found for the selected criteria.',
+                content: 'No FAQ statistics found for the selected criteria.',
                 ephemeral: true
             });
         }
 
-        // Generate CSV
-        let csv = 'Question,Count,First Asked,Response Type\n';
+        // Generate FAQ summary CSV
+        let faqCsv = 'FAQ Question,Total Usage,Category,Positive Feedback,Negative Feedback,Last Used\n';
         
-        questions.forEach(question => {
+        faqStats.forEach(stat => {
             // Escape fields that might contain commas or quotes
             const escapeCSV = (field: string) => {
                 if (!field) return '';
@@ -140,35 +125,46 @@ export default class extends Command {
                 return field;
             };
             
-            // Get formatted date or use default
-            let dateStr = 'Unknown';
+            // Format date
+            let lastUsedStr = 'Unknown';
             try {
-                if (question.firstAsked) {
-                    const date = new Date(question.firstAsked);
+                if (stat.lastUsed) {
+                    const date = new Date(stat.lastUsed);
                     if (!isNaN(date.getTime())) {
-                        dateStr = date.toISOString();
+                        lastUsedStr = date.toISOString();
                     }
                 }
             } catch (e) {
                 console.error('Error formatting date:', e);
             }
             
-            // Ensure count is a number
-            const count = typeof question.count === 'number' ? question.count : 0;
+            // Get usage count based on user filter
+            const usageCount = user ? (stat.userCount || 0) : (stat.usageCount || 0);
             
-            csv += `${escapeCSV(question.questionContent)},`;
-            csv += `${count},`;
-            csv += `${dateStr},`;
-            csv += `${question.responseType || 'unknown'}\n`;
+            // Get feedback counts
+            const positiveFeedback = stat.feedback?.positive || 0;
+            const negativeFeedback = stat.feedback?.negative || 0;
+            
+            faqCsv += `${escapeCSV(stat.question || 'Unknown Question')},`;
+            faqCsv += `${usageCount},`;
+            faqCsv += `${escapeCSV(stat.category || 'Unknown')},`;
+            faqCsv += `${positiveFeedback},`;
+            faqCsv += `${negativeFeedback},`;
+            faqCsv += `${lastUsedStr}\n`;
         });
 
-        // Create a second CSV for instances
-        let instancesCSV = 'Question,User ID,Username,Asked At,Channel ID\n';
+        // Create a second CSV for usage history instances
+        let instancesCsv = 'FAQ Question,User ID,Username,Used At\n';
         let instanceCount = 0;
         
-        questions.forEach(question => {
-            if (question.instances && Array.isArray(question.instances)) {
-                question.instances.forEach(instance => {
+        faqStats.forEach(stat => {
+            if (stat.usageHistory && Array.isArray(stat.usageHistory)) {
+                // If user filter is applied, only include instances for that user
+                const relevantHistory = user 
+                    ? stat.usageHistory.filter(usage => usage.userId === user.id) 
+                    : stat.usageHistory;
+                    
+                relevantHistory.forEach(instance => {
                     const escapeCSV = (field: string) => {
                         if (!field) return '';
                         field = field.replace(/\n/g, ' ');
@@ -179,7 +175,7 @@ export default class extends Command {
                         return field;
                     };
                     
-                    // Get formatted timestamp or use default
+                    // Get formatted timestamp
                     let timestampStr = 'Unknown';
                     try {
                         if (instance.timestamp) {
@@ -192,11 +188,10 @@ export default class extends Command {
                         console.error('Error formatting timestamp:', e);
                     }
                     
-                    instancesCSV += `${escapeCSV(question.questionContent)},`;
-                    instancesCSV += `${instance.userId || 'unknown'},`;
-                    instancesCSV += `${escapeCSV(instance.userName || 'unknown')},`;
-                    instancesCSV += `${timestampStr},`;
-                    instancesCSV += `${instance.channelId || 'unknown'}\n`;
+                    instancesCsv += `${escapeCSV(stat.question || 'Unknown Question')},`;
+                    instancesCsv += `${instance.userId || 'unknown'},`;
+                    instancesCsv += `${escapeCSV(instance.username || 'unknown')},`;
+                    instancesCsv += `${timestampStr}\n`;
                     instanceCount++;
                 });
             }
@@ -207,19 +202,19 @@ export default class extends Command {
         const dateString = date.toISOString().split('T')[0];
         
         // Create attachments
-        const questionsAttachment = new AttachmentBuilder(Buffer.from(csv, 'utf-8'), { 
-            name: `questions_summary_${dateString}.csv`,
-            description: 'Summary of questions asked'
+        const faqsAttachment = new AttachmentBuilder(Buffer.from(faqCsv, 'utf-8'), { 
+            name: `faq_summary_${dateString}.csv`,
+            description: 'Summary of FAQ usage'
         });
         
-        const instancesAttachment = new AttachmentBuilder(Buffer.from(instancesCSV, 'utf-8'), { 
-            name: `question_instances_${dateString}.csv`,
-            description: 'Detailed instances of questions asked'
+        const instancesAttachment = new AttachmentBuilder(Buffer.from(instancesCsv, 'utf-8'), { 
+            name: `faq_usage_history_${dateString}.csv`,
+            description: 'Detailed history of FAQ usage'
         });
 
         return interaction.reply({
-            content: `Exported ${questions.length} questions with ${instanceCount} total instances.`,
-            files: [questionsAttachment, instancesAttachment],
+            content: `Exported ${faqStats.length} FAQs with ${instanceCount} total usages.`,
+            files: [faqsAttachment, instancesAttachment],
             ephemeral: false
         });
     }
