@@ -263,11 +263,11 @@ export async function handleFAQResponse(msg: Message, now: number): Promise<void
 			.setColor('#00FF00')
 			.setTimestamp();
 
-		if (foundFAQ.link) {
-			embed.addFields({ name: 'For more details', value: foundFAQ.link });
-		}
-
-		embed.addFields({ name: 'Did you find this response helpful?', value: '👍 Yes | 👎 No' });
+		embed.addFields(
+			{ name: '\u200B', value: '\u200B' },
+			{ name: 'For more details', value: foundFAQ.link },
+			{ name: 'Did you find this response helpful?', value: '👍 Yes | 👎 No' }
+		);
 
 		const reply = await msg.reply({
 			content: `${msg.member}, here is the answer to your question:`,
