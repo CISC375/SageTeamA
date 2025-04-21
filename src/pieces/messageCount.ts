@@ -114,7 +114,7 @@ function getTokenSimilarity(userSet: Set<string>, faqSet: Set<string>): number {
 }
 
 
-async function handleFAQResponse(msg: Message, now: number): Promise<void> {
+export async function handleFAQResponse(msg: Message, now: number): Promise<void> {
 	if (msg.author.bot) return;
 
 	// Check if auto-responses are disabled for this channel
@@ -137,7 +137,7 @@ async function handleFAQResponse(msg: Message, now: number): Promise<void> {
 	}
 
 	// If we get here, the message is processed, so count it toward the rate limit
-	const userRateLimit = rateLimits.get(msg.author.id)!; // Already set in messageCreate
+	const userRateLimit = rateLimits.get(msg.author.id) || { timestamps: [] }; // Already set in messageCreate
 	userRateLimit.timestamps.push(now);
 	rateLimits.set(msg.author.id, userRateLimit);
 
