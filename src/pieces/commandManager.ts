@@ -15,7 +15,7 @@ import { DB, GUILDS, MAINTAINERS, CHANNELS } from '@root/config';
 import { Course } from '../lib/types/Course';
 import { SageUser } from '../lib/types/SageUser';
 import { CommandError } from '../lib/types/errors';
-import { verify } from './verification';
+import { verify } from '../pieces/verification';
 
 const DELETE_DELAY = 10000;
 
@@ -269,10 +269,13 @@ async function runCommand(interaction: ChatInputCommandInteraction, bot: Client)
 	const command = bot.commands.get(interaction.commandName);
 
 	if (interaction.channel.type === ChannelType.GuildText && command.runInGuild === false) {
-		return interaction.reply({
-			content: 'This command must be run in DMs, not public channels',
+		const responseContent = 'This command must be run in DMs, not public channels';
+		const response = await interaction.reply({
+			content: responseContent,
 			ephemeral: true
 		});
+		
+		return response;
 	}
 
 	if (!command.permissions.every(permission => interaction.memberPermissions.has(permission.id as PermissionResolvable))) {
@@ -302,17 +305,26 @@ async function runCommand(interaction: ChatInputCommandInteraction, bot: Client)
 
 		const failMessages = ['HTTP 401: Unauthorized', `I'm sorry ${interaction.user.username}, I'm afraid I can't do that.`,
 			'Username is not in the sudoers file. This incident will be reported.', `I'm sorry ${interaction.user.username}, but you need sigma nine clearance for that.`];
-		if (!success) return interaction.reply(failMessages[Math.floor(Math.random() * failMessages.length)]);
+		
+		if (!success) {
+			const responseContent = failMessages[Math.floor(Math.random() * failMessages.length)];
+			const response = await interaction.reply(responseContent);
+			
+			return response;
+		}
 
 		try {
 			bot.commands.get(interaction.commandName).run(interaction)
-				?.catch(async (error: Error) => { // Idk if this is needed now, but keeping in case removing it breaks stuff...
+				?.catch(async (error: Error) => {
 					bot.emit('error', new CommandError(error, interaction));
-					interaction.reply({ content: `An error occurred. ${MAINTAINERS} have been notified.`, ephemeral: true });
+					const errorResponse = `An error occurred. ${MAINTAINERS} have been notified.`;
+					interaction.reply({ content: errorResponse, ephemeral: true });
 				});
 		} catch (error) {
 			bot.emit('error', new CommandError(error, interaction));
-			interaction.reply({ content: `An error occurred. ${MAINTAINERS} have been notified.`, ephemeral: true });
+			const errorResponse = `An error occurred. ${MAINTAINERS} have been notified.`;
+			interaction.reply({ content: errorResponse, ephemeral: true });
+			
 			console.log(error.errors);
 		}
 	}
