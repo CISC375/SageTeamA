@@ -184,7 +184,7 @@ export async function handleFAQResponse(msg: Message, now: number): Promise<void
 	);
 
 	// Only count toward rate limit if FAQ cooldown passes
-	const userRateLimit = rateLimits.get(msg.author.id)!; // Already set in messageCreate
+	const userRateLimit = rateLimits.get(msg.author.id) || { timestamps: [] }; // Already set in messageCreate
 	userRateLimit.timestamps.push(now);
 	rateLimits.set(msg.author.id, userRateLimit);
 
