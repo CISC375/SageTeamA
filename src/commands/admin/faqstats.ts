@@ -38,31 +38,19 @@ export default class extends Command {
             required: false
         },
         {
-			name: 'category',
-			description: 'Filter by FAQ category',
-			type: ApplicationCommandOptionType.String,
+            name: 'category',
+            description: 'Filter by FAQ category',
+            type: ApplicationCommandOptionType.String,
 			required: false,
 			choices: [
-			  { name: '📁 Job/Interview', value: 'Job/Interview' },
-			  { name: '📁 Class Registration', value: 'Class Registration' },
-			  { name: '📁 General', value: 'General' },
-			  { name: '📁 Server Questions', value: 'Server Questions' },
-			  { name: '📊 All FAQs', value: 'all' }
+				{ name: '📁 Job/Interview', value: 'Job/Interview' },
+				{ name: '📁 Class Registration', value: 'Class Registration' },
+				{ name: '📁 General', value: 'General' },
+				{ name: '📁 Server Questions', value: 'Server Questions' },
+				{ name: '📊 All FAQs', value: 'all' }
 			]
-		  }
-		  
+        }
     ];
-
-    // Static method to get categories from the database
-    static async getCategories(client: any): Promise<string[]> {
-        // Hard coded categories from the FAQs collection
-        return [
-            'Job/Interview',
-            'Class Registration',
-            'General',
-            'Server Questions'
-        ];
-    }
 
     async run(interaction: ChatInputCommandInteraction): Promise<InteractionResponse<boolean> | void> {
 		const timeframe = interaction.options.getString('timeframe') || 'all';
@@ -71,89 +59,6 @@ export default class extends Command {
 	
 		return this.handleFAQAnalytics(interaction, categoryFilter, timeframe, user);
 	}
-	
-
-    // Handle autocomplete for category parameter
-    async autocomplete(interaction: any): Promise<void> {
-        const focusedValue = interaction.options.getFocused();
-        
-        try {
-            // Get hard coded categories
-            const categories = [
-                'Job/Interview',
-                'Class Registration',
-                'General',
-                'Server Questions'
-            ];
-            
-            // Filter categories based on user input
-            const filtered = categories.filter(category => 
-                category.toLowerCase().includes(focusedValue.toLowerCase())
-            );
-            
-            // Add "All FAQs" option
-            const options = [
-                { name: '📊 All FAQs', value: 'all' }
-            ];
-            
-            // Add filtered categories
-            filtered.forEach(category => {
-                options.push({ name: `📁 ${category}`, value: category });
-            });
-            
-            // Limit to 25 options (Discord limit)
-            const limitedOptions = options.slice(0, 25);
-            
-            await interaction.respond(limitedOptions);
-        } catch (error) {
-            console.error('Error in autocomplete:', error);
-            await interaction.respond([{ name: '📊 All FAQs', value: 'all' }]);
-        }
-    }
-    
-    private setupAnalyticsHandler(client: any, timeframe: string, user: any) {
-        // Remove any existing listener with the same name to prevent duplicates
-        const existingListeners = client.listeners(Events.InteractionCreate);
-        for (const listener of existingListeners) {
-            if (listener.name === 'faqStatsHandler') {
-                client.removeListener(Events.InteractionCreate, listener);
-            }
-        }
-        
-        // Create a named function so we can reference it later
-        const analyticsHandler = async (interaction: any) => {
-            try {
-                // Handle string select menus with our custom ID
-                if (interaction.isStringSelectMenu() && interaction.customId === 'faq_stats_category') {
-                    const category = interaction.values[0];
-                    await this.handleFAQAnalytics(interaction, category, timeframe, user);
-                }
-            } catch (error) {
-                console.error('Error handling FAQ stats interaction:', error);
-                const errorMessage = {
-                    content: '❌ An error occurred while processing your request. Please try again.',
-                    ephemeral: true
-                };
-                
-                if (interaction.isStringSelectMenu()) {
-                    await interaction.editReply(errorMessage);
-                } else {
-                    await interaction.reply(errorMessage);
-                }
-            }
-            
-            // Clean up the listener after processing
-            setTimeout(() => {
-                client.removeListener(Events.InteractionCreate, analyticsHandler);
-            }, 1000);
-        };
-        
-        // Name the function for identification
-        Object.defineProperty(analyticsHandler, 'name', { value: 'faqStatsHandler' });
-        
-        // Add the listener
-        client.on(Events.InteractionCreate, analyticsHandler);
-    }
     
     // Handle the FAQ analytics with all filters applied
     private async handleFAQAnalytics(
