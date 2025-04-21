@@ -4,8 +4,6 @@ import { DatabaseError } from '@lib/types/errors';
 import { CHANNELS, DB, ROLES, GUILDS } from '@root/config';
 import { SageUser } from '@lib/types/SageUser';
 import { calcNeededExp } from '@lib/utils/generalUtils';
-//import {levenshteinDistance } from '@lib/utils/levenshtein'
-// import {levenshteinDistance } from '@lib/utils/levenshtein'
 
 // Rate limit settings
 const MAX_COMMANDS = 5; // 5 questions per minute
@@ -155,7 +153,7 @@ function getTokenSimilarity(userSet: Set<string>, faqSet: Set<string>): number {
 }
 
 
-async function handleFAQResponse(msg: Message, now: number): Promise<void> {
+export async function handleFAQResponse(msg: Message, now: number): Promise<void> {
 	if (msg.author.bot) return;
 
 	// Check if auto-responses are disabled for this channel
@@ -186,7 +184,7 @@ async function handleFAQResponse(msg: Message, now: number): Promise<void> {
 	);
 
 	// Only count toward rate limit if FAQ cooldown passes
-	const userRateLimit = rateLimits.get(msg.author.id)!; // Already set in messageCreate
+	const userRateLimit = rateLimits.get(msg.author.id) || { timestamps: [] }; // Already set in messageCreate
 	userRateLimit.timestamps.push(now);
 	rateLimits.set(msg.author.id, userRateLimit);
 
@@ -233,7 +231,7 @@ async function handleFAQResponse(msg: Message, now: number): Promise<void> {
 
 	if (foundFAQ) {
 		// No longer log to BOT_RESPONSES collection - using faq_stats directly instead
-		
+
 		// Track FAQ usage statistics
 		const faqId = foundFAQ._id || foundFAQ.question;
 		await msg.client.mongo.collection(DB.CLIENT_DATA).updateOne(
