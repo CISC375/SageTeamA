@@ -1,4 +1,4 @@
-import { ApplicationCommandOptionData, ApplicationCommandOptionType, ChatInputCommandInteraction, EmbedBuilder, InteractionResponse, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, StringSelectMenuInteraction, Events } from 'discord.js';
+import { ApplicationCommandOptionData, ApplicationCommandOptionType, ChatInputCommandInteraction, EmbedBuilder, InteractionResponse, ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuInteraction, Events } from 'discord.js';
 import { Command } from '@lib/types/Command';
 import { DB } from '@root/config';
 import { ADMIN_PERMS } from '@lib/permissions';
@@ -38,113 +38,80 @@ export default class extends Command {
             required: false
         },
         {
-            name: 'category',
-            description: 'Filter by FAQ category',
-            type: ApplicationCommandOptionType.String,
-            required: false
-        },
-        {
-            name: 'detailed',
-            description: 'Show detailed information for each FAQ',
-            type: ApplicationCommandOptionType.Boolean,
-            required: false,
-        }
+			name: 'category',
+			description: 'Filter by FAQ category',
+			type: ApplicationCommandOptionType.String,
+			required: false,
+			choices: [
+			  { name: '📁 Job/Interview', value: 'Job/Interview' },
+			  { name: '📁 Class Registration', value: 'Class Registration' },
+			  { name: '📁 General', value: 'General' },
+			  { name: '📁 Server Questions', value: 'Server Questions' },
+			  { name: '📊 All FAQs', value: 'all' }
+			]
+		  }
+		  
     ];
 
     // Static method to get categories from the database
     static async getCategories(client: any): Promise<string[]> {
-        if (!client || !client.mongo) {
-            return [];
-        }
-        
-        try {
-            // Fetch distinct categories from the FAQs collection
-            const categories = await client.mongo.collection(DB.FAQS)
-                .distinct('category');
-            
-            // Filter to valid string categories
-            return Array.isArray(categories) 
-                ? categories.filter(cat => cat && typeof cat === 'string')
-                : [];
-                
-        } catch (error) {
-            console.error('Error fetching FAQ categories:', error);
-            return [];
-        }
+        // Hard coded categories from the FAQs collection
+        return [
+            'Job/Interview',
+            'Class Registration',
+            'General',
+            'Server Questions'
+        ];
     }
 
     async run(interaction: ChatInputCommandInteraction): Promise<InteractionResponse<boolean> | void> {
-        const timeframe = interaction.options.getString('timeframe') || 'all';
-        const user = interaction.options.getUser('user');
-        const categoryFilter = interaction.options.getString('category');
-        const detailed = interaction.options.getBoolean('detailed') || false;
+		const timeframe = interaction.options.getString('timeframe') || 'all';
+		const user = interaction.options.getUser('user');
+		const categoryFilter = interaction.options.getString('category') || 'all';
+	
+		return this.handleFAQAnalytics(interaction, categoryFilter, timeframe, user);
+	}
+	
+
+    // Handle autocomplete for category parameter
+    async autocomplete(interaction: any): Promise<void> {
+        const focusedValue = interaction.options.getFocused();
         
-        if (categoryFilter) {
-            // If a category is specified, handle it directly
-            return this.handleFAQAnalytics(interaction, categoryFilter, timeframe, user, detailed);
-        } else {
-            // Otherwise, show the category selection menu
-            return this.showCategorySelection(interaction, timeframe, user, detailed);
-        }
-    }
-    
-    // Show the category selection menu
-    private async showCategorySelection(
-        interaction: ChatInputCommandInteraction,
-        timeframe: string,
-        user: any,
-        showDetails: boolean
-    ): Promise<InteractionResponse<boolean> | void> {
-        // Set up handler for category selection
-        this.setupAnalyticsHandler(interaction.client, timeframe, user, showDetails);
-        
-        // Fetch categories from the database
-        const categories = await (this.constructor as typeof Command & { getCategories: Function })
-            .getCategories(interaction.client);
-        
-        // Create select menu options with Show All first
-        const categoryOptions = [
-            { label: 'Show All FAQs', value: 'all' }
-        ];
-        
-        // Add each category as an option
-        if (categories && categories.length > 0) {
-            categories.forEach(category => {
-                categoryOptions.push({ label: category, value: category });
+        try {
+            // Get hard coded categories
+            const categories = [
+                'Job/Interview',
+                'Class Registration',
+                'General',
+                'Server Questions'
+            ];
+            
+            // Filter categories based on user input
+            const filtered = categories.filter(category => 
+                category.toLowerCase().includes(focusedValue.toLowerCase())
+            );
+            
+            // Add "All FAQs" option
+            const options = [
+                { name: '📊 All FAQs', value: 'all' }
+            ];
+            
+            // Add filtered categories
+            filtered.forEach(category => {
+                options.push({ name: `📁 ${category}`, value: category });
             });
+            
+            // Limit to 25 options (Discord limit)
+            const limitedOptions = options.slice(0, 25);
+            
+            await interaction.respond(limitedOptions);
+        } catch (error) {
+            console.error('Error in autocomplete:', error);
+            await interaction.respond([{ name: '📊 All FAQs', value: 'all' }]);
         }
-        
-        // Create a select menu for categories
-        const categorySelectMenu = new StringSelectMenuBuilder()
-            .setCustomId('faq_stats_category')
-            .setPlaceholder('Select a category to filter by')
-            .addOptions(categoryOptions);
-        
-        // Create an action row with the select menu
-        const row = new ActionRowBuilder<StringSelectMenuBuilder>()
-            .addComponents(categorySelectMenu);
-        
-        // Prepare timeframe description
-        let timeframeDesc = '';
-        if (timeframe !== 'all') {
-            timeframeDesc = ` for ${timeframe === 'today' ? 'today' : `the past ${timeframe}`}`;
-        }
-        
-        // Add user info if present
-        let userDesc = '';
-        if (user) {
-            userDesc = ` used by ${user.username}`;
-        }
-        
-        // Send the initial response with the category dropdown
-        return interaction.reply({
-            content: `Select a category to view FAQ statistics${timeframeDesc}${userDesc}:`,
-            components: [row],
-            ephemeral: true
-        });
     }
     
-    private setupAnalyticsHandler(client: any, timeframe: string, user: any, showDetails: boolean) {
+    private setupAnalyticsHandler(client: any, timeframe: string, user: any) {
         // Remove any existing listener with the same name to prevent duplicates
         const existingListeners = client.listeners(Events.InteractionCreate);
         for (const listener of existingListeners) {
@@ -155,14 +122,25 @@ export default class extends Command {
         
         // Create a named function so we can reference it later
         const analyticsHandler = async (interaction: any) => {
-            // Only handle string select menus with our custom ID
-            if (!interaction.isStringSelectMenu() || interaction.customId !== 'faq_stats_category') {
-                return;
+            try {
+                // Handle string select menus with our custom ID
+                if (interaction.isStringSelectMenu() && interaction.customId === 'faq_stats_category') {
+                    const category = interaction.values[0];
+                    await this.handleFAQAnalytics(interaction, category, timeframe, user);
+                }
+            } catch (error) {
+                console.error('Error handling FAQ stats interaction:', error);
+                const errorMessage = {
+                    content: '❌ An error occurred while processing your request. Please try again.',
+                    ephemeral: true
+                };
+                
+                if (interaction.isStringSelectMenu()) {
+                    await interaction.editReply(errorMessage);
+                } else {
+                    await interaction.reply(errorMessage);
+                }
             }
-            
-            // Process the category selection
-            const category = interaction.values[0];
-            await this.handleFAQAnalytics(interaction, category, timeframe, user, showDetails);
             
             // Clean up the listener after processing
             setTimeout(() => {
@@ -182,8 +160,7 @@ export default class extends Command {
         interaction: any,
         category: string,
         timeframe: string, 
-        user: any,
-        showDetails: boolean
+        user: any
     ) {
         // If it's a StringSelectMenuInteraction, need to defer update
         if (interaction.isStringSelectMenu()) {
@@ -242,7 +219,7 @@ export default class extends Command {
         
         if (!faqStats || faqStats.length === 0) {
             const reply = {
-                content: 'No FAQ usage statistics found for the selected criteria.',
+                content: '❌ No FAQ usage statistics found for the selected criteria.',
                 components: [],
                 embeds: []
             };
@@ -250,7 +227,7 @@ export default class extends Command {
             if (interaction.isStringSelectMenu()) {
                 await interaction.editReply(reply);
             } else {
-                await interaction.reply({ ...reply, ephemeral: true });
+                await interaction.reply(reply);
             }
             return;
         }
@@ -267,20 +244,20 @@ export default class extends Command {
         
         // Create summary embed
         const embed = new EmbedBuilder()
-            .setTitle(`FAQ Usage Statistics${category !== 'all' ? ` - ${category}` : ''}`)
+            .setTitle(`📊 FAQ Usage Statistics${category !== 'all' ? ` - ${category}` : ''}`)
             .setColor('#00AAFF')
             .setTimestamp();
         
         // Add timeframe info to description
         let description = '';
         if (timeframe !== 'all') {
-            description += `Statistics for ${timeframe === 'today' ? 'today' : `the past ${timeframe}`}`;
+            description += `📅 Statistics for ${timeframe === 'today' ? 'today' : `the past ${timeframe}`}`;
         }
         
         // Add user filter info to description
         if (user) {
             description += description ? '\n' : '';
-            description += `Filtered for user: ${user.username}`;
+            description += `👤 Filtered for user: ${user.username}`;
         }
         
         if (description) {
@@ -293,7 +270,7 @@ export default class extends Command {
             : faqStats.reduce((total, stat) => total + (stat.usageCount || 0), 0);
             
         embed.addFields({ 
-            name: 'Total FAQ Usage', 
+            name: '📈 Total FAQ Usage', 
             value: `${totalUsage} times${user ? ` by ${user.username}` : ''}` 
         });
         
@@ -310,10 +287,10 @@ export default class extends Command {
         if (Object.keys(categoryStats).length > 0) {
             const categoryBreakdown = Object.entries(categoryStats)
                 .sort((a, b) => (b[1] as number) - (a[1] as number))
-                .map(([cat, count]) => `${cat}: ${count} uses (${Math.round((count as number / totalUsage) * 100)}%)`)
+                .map(([cat, count]) => `📁 ${cat}: ${count} uses (${Math.round((count as number / totalUsage) * 100)}%)`)
                 .join('\n');
             
-            embed.addFields({ name: 'Usage by Category', value: categoryBreakdown });
+            embed.addFields({ name: '📊 Usage by Category', value: categoryBreakdown });
         }
         
         // Add feedback stats if not filtered by user (as feedback isn't user-specific)
@@ -334,57 +311,55 @@ export default class extends Command {
                     `👎 ${totalNegativeFeedback} (${Math.round((totalNegativeFeedback / totalFeedback) * 100)}%)` :
                     'No feedback data';
                     
-                embed.addFields({ name: 'Feedback Statistics', value: `${feedbackRate}\n${feedbackBreakdown}` });
+                embed.addFields({ name: '⭐ Feedback Statistics', value: `${feedbackRate}\n${feedbackBreakdown}` });
             }
         }
         
-        // If detailed view is requested, show info for each FAQ
-        if (showDetails) {
-            const topFaqs = faqStats.slice(0, 10); // Limit to top 10 to avoid message limit
+        // Always show detailed info for each FAQ
+        const topFaqs = faqStats.slice(0, 10); // Limit to top 10 to avoid message limit
+        
+        const detailedStats = topFaqs.map(stat => {
+            const question = stat.question || 'Unknown Question';
+            const usageCount = user ? (stat.userCount || 0) : (stat.usageCount || 0);
             
-            const detailedStats = topFaqs.map(stat => {
-                const question = stat.question || 'Unknown Question';
-                const usageCount = user ? (stat.userCount || 0) : (stat.usageCount || 0);
+            let feedbackText = '';
+            if (!user) { // Only show feedback if not filtering by user
+                const positiveFeedback = stat.feedback?.positive || 0;
+                const negativeFeedback = stat.feedback?.negative || 0;
+                const totalFeedback = positiveFeedback + negativeFeedback;
                 
-                let feedbackText = '';
-                if (!user) { // Only show feedback if not filtering by user
-                    const positiveFeedback = stat.feedback?.positive || 0;
-                    const negativeFeedback = stat.feedback?.negative || 0;
-                    const totalFeedback = positiveFeedback + negativeFeedback;
-                    
-                    if (totalFeedback > 0) {
-                        const positivePercent = Math.round((positiveFeedback / totalFeedback) * 100);
-                        feedbackText = `\n👍 ${positiveFeedback} (${positivePercent}%) | 👎 ${negativeFeedback} (${100 - positivePercent}%)`;
-                    }
+                if (totalFeedback > 0) {
+                    const positivePercent = Math.round((positiveFeedback / totalFeedback) * 100);
+                    feedbackText = `\n⭐ Feedback: 👍 ${positiveFeedback} (${positivePercent}%) | 👎 ${negativeFeedback} (${100 - positivePercent}%)`;
                 }
-                
-                let lastUsedText = '';
-                if (stat.lastUsed) {
-                    lastUsedText = `\nLast used: <t:${Math.floor(stat.lastUsed / 1000)}:R>`;
-                }
-                
-                // Show user-specific usage history if filtering by user
-                let userHistoryText = '';
-                if (user && stat.usageHistory) {
-                    const userUsages = stat.usageHistory.filter(usage => usage.userId === user.id);
-                    if (userUsages.length > 0) {
-                        // Show the most recent usage time
-                        const mostRecent = Math.max(...userUsages.map(u => u.timestamp));
-                        userHistoryText = `\nLast used by ${user.username}: <t:${Math.floor(mostRecent / 1000)}:R>`;
-                    }
-                }
-                
-                return `**${question}**\nUsed ${usageCount} times${user ? ` by ${user.username}` : ''}${feedbackText}${user ? userHistoryText : lastUsedText}`;
-            }).join('\n\n');
+            }
             
-            embed.addFields({ name: 'Top FAQ Details', value: detailedStats || 'No detailed data available' });
-        }
+            let lastUsedText = '';
+            if (stat.lastUsed) {
+                lastUsedText = `\n🕒 Last used: <t:${Math.floor(stat.lastUsed / 1000)}:R>`;
+            }
+            
+            // Show user-specific usage history if filtering by user
+            let userHistoryText = '';
+            if (user && stat.usageHistory) {
+                const userUsages = stat.usageHistory.filter(usage => usage.userId === user.id);
+                if (userUsages.length > 0) {
+                    // Show the most recent usage time
+                    const mostRecent = Math.max(...userUsages.map(u => u.timestamp));
+                    userHistoryText = `\n🕒 Last used by ${user.username}: <t:${Math.floor(mostRecent / 1000)}:R>`;
+                }
+            }
+            
+            return `**❓ ${question}**\n📊 Used ${usageCount} times${user ? ` by ${user.username}` : ''}${feedbackText}${user ? userHistoryText : lastUsedText}`;
+        }).join('\n\n');
+        
+        embed.addFields({ name: '📋 Top FAQ Details', value: detailedStats || 'No detailed data available' });
         
         // Send the response
         const reply = {
             content: null,
             embeds: [embed],
-            components: [] // No components/dropdowns in the response
+            components: [] // No components in the response
         };
         
         if (interaction.isStringSelectMenu()) {
