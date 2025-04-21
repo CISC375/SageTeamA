@@ -3,7 +3,6 @@ import {
 	ButtonBuilder,
 	ButtonInteraction,
 	ButtonStyle,
-	ChannelType,
 	ChatInputCommandInteraction,
 	EmbedBuilder,
 	Events,
@@ -16,9 +15,7 @@ export default class extends Command {
 	description = "Provides list of all saved FAQs questions.";
 	runInDM = false;
 
-	async run(
-		interaction: ChatInputCommandInteraction
-	): Promise<InteractionResponse<boolean> | void> {
+	async run(interaction: ChatInputCommandInteraction): Promise<InteractionResponse<boolean> | void> {
 		setupCategoryHandler(interaction.client);
 
 		var categories = await interaction.client.mongo
@@ -33,7 +30,7 @@ export default class extends Command {
 			const errorEmbed = new EmbedBuilder()
 				.setColor("#FF0000")
 				.setTitle("Error")
-				.setDescription(`No FAQs found.`);
+				.setDescription(`❌ No FAQs found.`);
 			return interaction.reply({
 				content: "",
 				embeds: [errorEmbed],
