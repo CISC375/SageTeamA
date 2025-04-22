@@ -16,7 +16,8 @@
 		"target": "ES2019",
 		"types": [
 			"node",
-			"discord.js"
+			"discord.js",
+			"jest"
 		],
         "module": "commonjs"
     },
@@ -26,7 +27,7 @@
 	],
     "exclude": [
         "**/node_modules",
-		"**/node_modules/discord.js/typings/index.d.ts", // problematic in djs versions >13.1
+		"**/node_modules/discord.js/typings/index.d.ts",
 		"**/dist"
     ]
 }

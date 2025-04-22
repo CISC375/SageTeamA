@@ -13,7 +13,7 @@
     "install": "node-pre-gyp install --fallback-to-build --build-from-source",
     "build": "tsc -p .",
     "clean": "rm -rf dist",
-    "test": "eslint src --ext .ts",
+    "test": "jest",
     "lint": "eslint src --ext .ts --fix",
     "dev": "tsc-watch --onSuccess \"node dist/src/sage.js\"",
     "onboard": "node dist/onboard/onboard.js",
@@ -74,7 +74,9 @@
     "eslint": "^7.26.0",
     "jest": "^29.7.0",
     "ts-jest": "^29.3.2",
+    "ts-node": "^10.9.2",
     "tsc-watch": "^4.6.2",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "^5.0.2"
   }
 }
