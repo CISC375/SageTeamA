@@ -27,41 +27,6 @@ const countedChannelTypes = [
 ];
 
 async function register(bot: Client): Promise<void> {
-	/* bot.on('messageCreate', async msg => {
-		// Ignore all bot messages right away
-		if (msg.author.bot) return;
-
-		// Rate limiting logic for messages only
-		const userId = msg.author.id;
-		const now = Date.now();
-		const userRateLimit = rateLimits.get(userId) || { timestamps: [] };
-
-		// Filter out timestamps older than 1 minute
-		userRateLimit.timestamps = userRateLimit.timestamps.filter(ts => now - ts < TIME_WINDOW);
-
-		// Check if user has hit the limit
-		if (userRateLimit.timestamps.length >= MAX_COMMANDS) {
-			const timeUntilReset = ((TIME_WINDOW - (now - userRateLimit.timestamps[0])) / 1000).toFixed(1);
-			const lastWarning = userRateLimit.lastWarning || 0;
-
-			if (now - lastWarning >= WARNING_COOLDOWN) {
-				await msg.delete();
-				await msg.reply({ content: `You're asking too many questions! Please wait ${timeUntilReset} seconds before asking another one.`, ephemeral: true });
-				// await msg.reply(`You're asking too many questions! Please wait ${timeUntilReset} seconds before asking another one.`);
-				userRateLimit.lastWarning = now;
-				rateLimits.set(userId, userRateLimit);
-			}
-			return; // Stop further processing
-		}
-
-		// Update the Map only if FAQ processing succeeds (moved into handleFAQResponse)
-		rateLimits.set(userId, userRateLimit);
-
-		// Original processing
-		countMessages(msg).catch(async error => bot.emit('error', error));
-		await handleFAQResponse(msg, now); // Pass 'now' to handleFAQResponse
-	}); */
-
 	bot.on('messageCreate', async msg => {
 		// Ignore all bot messages right away
 		if (msg.author.bot) return;
