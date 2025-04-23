@@ -1,10 +1,13 @@
 import {
 	handleCategorySelection as removeCategorySelection,
+	setupCategoryHandler as setupRemoveCategoryHandler,
 	deleteQuestion,
 } from "../commands/admin/removefaq";
 import {
+	handleCategorySelection as editCategorySelection,
 	handleModalSubmit as editModalSubmit,
 	handleQuestionConfirmation,
+	setupCategoryHandler as setupEditCategoryHandler,
 } from "../commands/admin/editfaq";
 import { handleModalSubmit as addModalSubmit } from "../commands/admin/addfaq";
 import { handleButton as listFaqButton } from "../commands/info/listfaq";
@@ -12,7 +15,9 @@ import {
 	StringSelectMenuInteraction,
 	ButtonInteraction,
 	ModalSubmitInteraction,
+	ButtonStyle,
 } from "discord.js";
+import EventEmitter from "events";
 
 jest.mock("discord.js", () => ({
 	...jest.requireActual("discord.js"),
@@ -118,10 +123,92 @@ describe("FAQ Commands", () => {
 				"Failed to delete the question"
 			);
 		});
+
+		it("should cancel deletion and show a cancellation message", async () => {
+			const mockClient = new EventEmitter() as EventEmitter & {
+				mongo: any;
+				removeListener: (...args: any[]) => void;
+			};
+
+			mockClient.mongo = { collection: mockMongoCollection };
+			mockClient.removeListener = jest.fn();
+
+			const mockInteraction = {
+				...mockInteractionBase,
+				customId: "cancel_delete",
+				isButton: jest.fn().mockReturnValue(true),
+				isStringSelectMenu: jest.fn().mockReturnValue(false),
+				user: { id: "testUser" },
+				client: mockClient,
+				update: jest.fn(),
+			} as unknown as ButtonInteraction;
+
+			await setupRemoveCategoryHandler(mockInteraction);
+
+			await mockClient.emit("interactionCreate", mockInteraction);
+
+			await mockClient.emit("interactionCreate", mockInteraction);
+
+			// 꺼내기
+			const updateCall = (mockInteraction.update as jest.Mock).mock
+				.calls[0][0];
+			const embed = updateCall.embeds[0].data;
+
+			expect(embed.title).toBe("Deletion canceled.");
+			expect(embed.description).toBe(
+				"The question has not been removed."
+			);
+		});
+
+		it("should go back to remove category selection when back button is clicked", async () => {
+			mockMongoCollection.mockReturnValue({
+				distinct: jest.fn().mockResolvedValue(["General", "Job"]),
+			});
+
+			const mockInteraction = {
+				...mockInteractionBase,
+				customId: "back_to_remove_category",
+				isButton: jest.fn().mockReturnValue(true),
+				update: jest.fn(),
+			} as unknown as ButtonInteraction;
+
+			await removeCategorySelection(mockInteraction);
+
+			expect(mockInteraction.update).toHaveBeenCalledWith(
+				expect.objectContaining({
+					content: expect.stringContaining(
+						"Select a category to delete"
+					),
+				})
+			);
+		});
 	});
 
 	// Test for editfaq
 	describe("editfaq", () => {
+		it("should handle category selection and send a reply", async () => {
+			mockMongoCollection.mockReturnValue({
+				distinct: jest
+					.fn()
+					.mockResolvedValue(["Category1", "Category2"]),
+			});
+
+			const mockInteraction = {
+				...mockInteractionBase,
+				values: ["Category1"],
+				isButton: jest.fn().mockReturnValue(false),
+				isStringSelectMenu: jest.fn().mockReturnValue(true),
+			} as unknown as StringSelectMenuInteraction;
+
+			await editCategorySelection(mockInteraction);
+
+			expect(mockInteraction.reply).toHaveBeenCalledWith(
+				expect.objectContaining({
+					content: "Select a category to edit questions from:",
+				})
+			);
+		});
+
 		it("should handle modal submission and update the FAQ", async () => {
 			mockMongoCollection.mockReturnValue({
 				updateOne: jest.fn().mockResolvedValue({ modifiedCount: 1 }),
@@ -148,7 +235,7 @@ describe("FAQ Commands", () => {
 			expect(embed.description).toBe(
 				"The question has been modified successfully."
 			);
-			expect(embed.fields).toEqual(expect.any(Array)); // 또는 정확히 비교하고 싶으면 값 입력
+			expect(embed.fields).toEqual(expect.any(Array));
 		});
 
 		it("should confirm question modification", async () => {
@@ -163,6 +250,91 @@ describe("FAQ Commands", () => {
 			expect(mockInteraction.update).toHaveBeenCalledWith(
 				expect.objectContaining({
 					content: "Please confirm your action.",
+				})
+			);
+		});
+
+		it("should handle edition failure and send an error message", async () => {
+			mockMongoCollection.mockReturnValue({
+				updateOne: jest.fn().mockResolvedValue({ modifiedCount: 0 }),
+			});
+
+			const mockInteraction = {
+				...mockInteractionBase,
+				customId: "modify_question_modal",
+				deferUpdate: jest.fn(),
+				editReply: jest.fn(),
+				fields: {
+					getTextInputValue: jest.fn((id) => `New ${id}`),
+				},
+				message: {
+					embeds: [{ description: '**"Old Question"**' }],
+				},
+			} as unknown as ModalSubmitInteraction;
+
+			await editModalSubmit(mockInteraction);
+
+			const embed = (mockInteraction.editReply as jest.Mock).mock
+				.calls[0][0].embeds[0].data;
+			expect(embed.title).toBe("Error");
+			expect(embed.description).toContain(
+				"Failed to modify the question"
+			);
+		});
+
+		it("should cancel edition and show a cancellation message", async () => {
+			const mockClient = new EventEmitter() as EventEmitter & {
+				mongo: any;
+				removeListener: (...args: any[]) => void;
+			};
+
+			mockClient.mongo = {
+				collection: mockMongoCollection,
+			};
+			mockClient.removeListener = jest.fn();
+
+			(global as any).client = mockClient;
+
+			const mockInteraction = {
+				...mockInteractionBase,
+				customId: "cancel_modify",
+				user: { id: "testUser" },
+				client: mockClient,
+				isButton: jest.fn().mockReturnValue(true),
+				isStringSelectMenu: jest.fn().mockReturnValue(false),
+				update: jest.fn(),
+			} as unknown as ButtonInteraction;
+
+			await setupEditCategoryHandler(mockInteraction);
+			await mockClient.emit("interactionCreate", mockInteraction);
+
+			const updateCall = (mockInteraction.update as jest.Mock).mock
+				.calls[0][0];
+			const embed = updateCall.embeds[0].data;
+
+			expect(embed.title).toBe("Edition canceled.");
+			expect(embed.description).toBe("The question has not been edited.");
+		});
+
+		it("should go back to edit category selection when back button is clicked", async () => {
+			mockMongoCollection.mockReturnValue({
+				distinct: jest.fn().mockResolvedValue(["General", "Job"]),
+			});
+
+			const mockInteraction = {
+				...mockInteractionBase,
+				customId: "back_to_edit_category",
+				isButton: jest.fn().mockReturnValue(true),
+				update: jest.fn(),
+			} as unknown as ButtonInteraction;
+
+			await editCategorySelection(mockInteraction);
+
+			expect(mockInteraction.update).toHaveBeenCalledWith(
+				expect.objectContaining({
+					content: expect.stringContaining(
+						"Select a category to edit"
+					),
 				})
 			);
 		});
@@ -233,6 +405,41 @@ describe("FAQ Commands", () => {
 
 	// Test for listfaq
 	describe("listfaq", () => {
+		it("should highlight the selected category button", async () => {
+			mockMongoCollection.mockReturnValue({
+				distinct: jest
+					.fn()
+					.mockResolvedValue(["Category1", "Category2"]),
+				find: jest.fn().mockReturnValue({
+					toArray: jest
+						.fn()
+						.mockResolvedValue([{ question: "Sample question?" }]),
+				}),
+			});
+
+			const mockInteraction = {
+				...mockInteractionBase,
+				customId: "faq_Category1",
+				isButton: jest.fn().mockReturnValue(true),
+				update: jest.fn(),
+			} as unknown as ButtonInteraction;
+
+			await listFaqButton(mockInteraction);
+
+			const buttonRow = (mockInteraction.update as jest.Mock).mock
+				.calls[0][0].components[0];
+			const buttons = buttonRow.components;
+
+			expect(
+				buttons.find((btn) => btn.data.custom_id === "faq_Category1")
+					.data.style
+			).toBe(ButtonStyle.Primary);
+			expect(
+				buttons.find((btn) => btn.data.custom_id === "faq_Category2")
+					.data.style
+			).toBe(ButtonStyle.Secondary);
+		});
+
 		it("should list FAQs for a category", async () => {
 			mockMongoCollection.mockReturnValue({
 				distinct: jest.fn().mockResolvedValue(["Category1"]),
