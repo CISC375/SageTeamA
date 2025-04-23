@@ -24,7 +24,7 @@ export default class extends Command {
 
 	async run(interaction: ChatInputCommandInteraction) {
 		// Set up the category handler to process category selection
-		setupCategoryHandler(interaction.client);
+		setupCategoryHandler(interaction);
 
 		handleCategorySelection(interaction);
 		return;
@@ -32,7 +32,7 @@ export default class extends Command {
 
 }
 
-export async function setupCategoryHandler(client) {
+export async function setupCategoryHandler(interaction) {
 	// Listener function to handle all relevant user interactions
 	const interactionListener = async (interaction) => {
 		const userId = interaction.user.id;
@@ -56,7 +56,7 @@ export async function setupCategoryHandler(client) {
 				await deleteQuestion(interaction);
 				// Remove listener after a short delay to prevent duplicates
 				setTimeout(() => {
-					client.removeListener(Events.InteractionCreate, interactionListener);
+					interaction.client.removeListener(Events.InteractionCreate, interactionListener);
 				}, 1000);
 			} else if (interaction.customId === 'cancel_delete') {
 				await interaction.update({
@@ -69,7 +69,7 @@ export async function setupCategoryHandler(client) {
 				});
 				// Remove listener after a short delay to prevent duplicates
 				setTimeout(() => {
-					client.removeListener(Events.InteractionCreate, interactionListener);
+					interaction.client.removeListener(Events.InteractionCreate, interactionListener);
 				}, 1000);
 			} else if (interaction.customId === 'back_to_previous') {
 				const userState = userStates[userId];
@@ -87,7 +87,7 @@ export async function setupCategoryHandler(client) {
 			}
 		}
 	};
-	client.on(Events.InteractionCreate, interactionListener);
+	interaction.client.on(Events.InteractionCreate, interactionListener);
 }
 
 export async function handleCategorySelection(interaction) {
