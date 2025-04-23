@@ -265,7 +265,7 @@ export async function loadCommands(bot: Client): Promise<void> {
 	console.log(`${bot.commands.size} commands loaded (${numNew} new, ${numEdited} edited).`);
 }
 
-async function runCommand(interaction: ChatInputCommandInteraction, bot: Client): Promise<unknown> {
+export async function runCommand(interaction: ChatInputCommandInteraction, bot: Client): Promise<unknown> {
 	const command = bot.commands.get(interaction.commandName);
 
 	if (interaction.channel.type === ChannelType.GuildText && command.runInGuild === false) {

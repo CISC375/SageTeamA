@@ -1,23 +1,29 @@
-import {
+import RemoveFaqCommand, {
 	handleCategorySelection as removeCategorySelection,
 	setupCategoryHandler as setupRemoveCategoryHandler,
 	deleteQuestion,
 } from "../commands/admin/removefaq";
-import {
+import EditFaqCommand, {
 	handleCategorySelection as editCategorySelection,
 	handleModalSubmit as editModalSubmit,
 	handleQuestionConfirmation,
 	setupCategoryHandler as setupEditCategoryHandler,
 } from "../commands/admin/editfaq";
-import { handleModalSubmit as addModalSubmit } from "../commands/admin/addfaq";
+import AddFaqCommand, {
+	handleModalSubmit as addModalSubmit,
+} from "../commands/admin/addfaq";
 import { handleButton as listFaqButton } from "../commands/info/listfaq";
 import {
 	StringSelectMenuInteraction,
 	ButtonInteraction,
 	ModalSubmitInteraction,
 	ButtonStyle,
+	ChatInputCommandInteraction,
+	Client,
+	ChannelType,
 } from "discord.js";
 import EventEmitter from "events";
+import { runCommand } from "../pieces/commandManager";
 
 jest.mock("discord.js", () => ({
 	...jest.requireActual("discord.js"),
@@ -487,6 +493,49 @@ describe("FAQ Commands", () => {
 
 			expect(embed.title).toBe("Error");
 			expect(embed.description).toContain("No FAQs found");
+		});
+	});
+
+	describe("Admin-only FAQ commands", () => {
+		const createMockInteraction = (commandName: string) =>
+			({
+				commandName,
+				channel: { type: ChannelType.GuildText },
+				memberPermissions: {
+					has: jest.fn().mockReturnValue(false),
+				},
+				user: { id: "123", username: "testUser" },
+				reply: jest.fn(),
+			} as unknown as ChatInputCommandInteraction);
+
+		const expectPermissionDenied = async (
+			commandName: string,
+			CommandClass: any
+		) => {
+			const interaction = createMockInteraction(commandName);
+			const mockBot = {
+				commands: new Map([[commandName, new CommandClass()]]),
+				emit: jest.fn(),
+			} as unknown as Client;
+
+			await runCommand(interaction, mockBot);
+
+			const embed = (interaction.reply as jest.Mock).mock.calls[0][0].embeds[0].data;
+
+			expect(embed.title).toBe("Error");
+			expect(embed.description).toContain("You do not have permission");
+		};
+
+		it("should block addfaq from non-admins", async () => {
+			await expectPermissionDenied("addfaq", AddFaqCommand);
+		});
+
+		it("should block editfaq from non-admins", async () => {
+			await expectPermissionDenied("editfaq", EditFaqCommand);
+		});
+
+		it("should block removefaq from non-admins", async () => {
+			await expectPermissionDenied("removefaq", RemoveFaqCommand);
 		});
 	});
 });
