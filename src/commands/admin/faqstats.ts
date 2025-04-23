@@ -39,9 +39,10 @@ export default class extends Command {
         },
         {
             name: 'category',
-            description: 'Filter by FAQ category',
+            description: 'Filter by FAQ category (leave empty to select from a list)',
             type: ApplicationCommandOptionType.String,
-            required: false
+            required: false,
+            autocomplete: false
         },
         {
             name: 'detailed',
@@ -156,7 +157,7 @@ export default class extends Command {
         // Create a named function so we can reference it later
         const analyticsHandler = async (interaction: any) => {
             // Only handle string select menus with our custom ID
-            if (!interaction.isStringSelectMenu() || interaction.customId !== 'faq_stats_category') {
+            if (!interaction.isStringSelectMenu?.() || interaction.customId !== 'faq_stats_category') {
                 return;
             }
             
@@ -186,7 +187,7 @@ export default class extends Command {
         showDetails: boolean
     ) {
         // If it's a StringSelectMenuInteraction, need to defer update
-        if (interaction.isStringSelectMenu()) {
+        if (interaction.isStringSelectMenu?.()) {
             await interaction.deferUpdate();
         }
         
@@ -247,7 +248,7 @@ export default class extends Command {
                 embeds: []
             };
             
-            if (interaction.isStringSelectMenu()) {
+            if (interaction.isStringSelectMenu?.()) {
                 await interaction.editReply(reply);
             } else {
                 await interaction.reply({ ...reply, ephemeral: true });
@@ -387,7 +388,7 @@ export default class extends Command {
             components: [] // No components/dropdowns in the response
         };
         
-        if (interaction.isStringSelectMenu()) {
+        if (interaction.isStringSelectMenu?.()) {
             await interaction.editReply(reply);
         } else {
             await interaction.reply(reply);
