@@ -111,8 +111,8 @@ export async function handleModalSubmit(interaction) {
 					{ name: '❓ Question', value: question },
 					{ name: '💬 Answer', value: answer, inline: true },
 					{ name: '\u200B', value: '\u200B' },
-					{ name: '📁 Category', value: category, inline: true },
-					{ name: '🔗 Useful Link', value: link, inline: true }
+					{ name: '📁 Category', value: category},
+					{ name: '🔗 Useful Link', value: link}
 				);
 			return interaction.editReply({ content: '', embeds: [responseEmbed], ephemeral: true });
 		}
