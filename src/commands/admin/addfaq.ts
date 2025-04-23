@@ -108,11 +108,11 @@ export async function handleModalSubmit(interaction) {
 				.setTitle('FAQ Added!')
 				.setDescription(`The question has been added to the FAQ list.`)
 				.addFields({ name: '\u200B', value: '\u200B' },
-					{ name: 'Question', value: question },
-					{ name: 'Answer', value: answer, inline: true },
+					{ name: '❓ Question', value: question },
+					{ name: '💬 Answer', value: answer, inline: true },
 					{ name: '\u200B', value: '\u200B' },
-					{ name: 'Category', value: category, inline: true },
-					{ name: 'Useful Link', value: link, inline: true }
+					{ name: '📁 Category', value: category, inline: true },
+					{ name: '🔗 Useful Link', value: link, inline: true }
 				);
 			return interaction.editReply({ content: '', embeds: [responseEmbed], ephemeral: true });
 		}

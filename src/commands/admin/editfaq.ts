@@ -436,11 +436,11 @@ export async function handleModalSubmit(interaction) {
 			.setTitle('FAQ Modified!')
 			.setDescription(`The question has been modified successfully.`)
 			.addFields({ name: '\u200B', value: '\u200B' },
-				{ name: 'Question', value: newQuestion },
-				{ name: 'Answer', value: newAnswer, inline: true },
+				{ name: '❓ Question', value: newQuestion },
+				{ name: '💬 Answer', value: newAnswer, inline: true },
 				{ name: '\u200B', value: '\u200B' },
-				{ name: 'Category', value: newCategory, inline: true },
-				{ name: 'Useful Link', value: newLink, inline: true }
+				{ name: '📁 Category', value: newCategory},
+				{ name: '🔗 Useful Link', value: newLink}
 			);
 
 		// Send the success message

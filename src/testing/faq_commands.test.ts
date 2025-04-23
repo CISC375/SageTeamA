@@ -85,10 +85,8 @@ describe("FAQ Commands", () => {
 			expect(embed.description).toBe(
 				"The question has been removed successfully from the FAQ list."
 			);
-			expect(embed.fields).toEqual([
-				{ name: "​", value: "​" },
-				{ name: "Question", value: "Question to delete" },
-			]);
+			expect(embed.fields[1].name).toContain("Question");
+			expect(embed.fields[1].value).toBe("Question to delete");
 		});
 
 		it("should handle deletion failure and send an error message", async () => {

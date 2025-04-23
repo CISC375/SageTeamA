@@ -73,7 +73,6 @@ export async function setupCategoryHandler(client) {
 				}, 1000);
 			} else if (interaction.customId === 'back_to_previous') {
 				const userState = userStates[userId];
-				console.log(`category: ${userState.category}, subcategory: ${userState.subcategory}, question: ${userState.question}`);
 			
 				if (userState.question) {
 					delete userState.question;
@@ -297,7 +296,7 @@ export async function handleQuestionConfirmation(
 		.setColor('#FF0000')
 		.setTitle('Confirm Deletion')
 		.setDescription(
-			`Are you sure you want to delete this question?\n\n**${selectedQuestion}**`
+			`Are you sure you want to delete this question?\n\n**"${selectedQuestion}"**`
 		);
 
 	// Create buttons for confirmation and cancellation
@@ -338,7 +337,7 @@ export async function deleteQuestion(interaction: ButtonInteraction) {
 		return interaction.update({ content: '', embeds: [errorEmbed], components: [] });
 	}
 
-	const removing = embed.description.split('**')[1];
+	const removing = embed.description.split('**')[1].replace(/^"|"$/g, '');
 
 	// Delete the question from the database
 	const result = await interaction.client.mongo
@@ -370,8 +369,9 @@ export async function deleteQuestion(interaction: ButtonInteraction) {
 		.setColor('#00FF00')
 		.setTitle('FAQ Removed!')
 		.setDescription(`The question has been removed successfully from the FAQ list.`)
-		.addFields({ name: '\u200B', value: '\u200B' },
-			{ name: 'Question', value: removing });
+		.addFields(
+			{ name: '\n', value: '\n' },
+			{ name: '❓ Question', value: removing });
 
 	// Send the success message
 	await interaction.editReply({
