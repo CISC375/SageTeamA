@@ -4,8 +4,6 @@ import { DatabaseError } from '@lib/types/errors';
 import { CHANNELS, DB, ROLES, GUILDS } from '@root/config';
 import { SageUser } from '@lib/types/SageUser';
 import { calcNeededExp } from '@lib/utils/generalUtils';
-//import {levenshteinDistance } from '@lib/utils/levenshtein'
-// import {levenshteinDistance } from '@lib/utils/levenshtein'
 
 // Rate limit settings
 const MAX_COMMANDS = 5; // 5 questions per minute
@@ -29,41 +27,6 @@ const countedChannelTypes = [
 ];
 
 async function register(bot: Client): Promise<void> {
-	/* bot.on('messageCreate', async msg => {
-		// Ignore all bot messages right away
-		if (msg.author.bot) return;
-
-		// Rate limiting logic for messages only
-		const userId = msg.author.id;
-		const now = Date.now();
-		const userRateLimit = rateLimits.get(userId) || { timestamps: [] };
-
-		// Filter out timestamps older than 1 minute
-		userRateLimit.timestamps = userRateLimit.timestamps.filter(ts => now - ts < TIME_WINDOW);
-
-		// Check if user has hit the limit
-		if (userRateLimit.timestamps.length >= MAX_COMMANDS) {
-			const timeUntilReset = ((TIME_WINDOW - (now - userRateLimit.timestamps[0])) / 1000).toFixed(1);
-			const lastWarning = userRateLimit.lastWarning || 0;
-
-			if (now - lastWarning >= WARNING_COOLDOWN) {
-				await msg.delete();
-				await msg.reply({ content: `You're asking too many questions! Please wait ${timeUntilReset} seconds before asking another one.`, ephemeral: true });
-				// await msg.reply(`You're asking too many questions! Please wait ${timeUntilReset} seconds before asking another one.`);
-				userRateLimit.lastWarning = now;
-				rateLimits.set(userId, userRateLimit);
-			}
-			return; // Stop further processing
-		}
-
-		// Update the Map only if FAQ processing succeeds (moved into handleFAQResponse)
-		rateLimits.set(userId, userRateLimit);
-
-		// Original processing
-		countMessages(msg).catch(async error => bot.emit('error', error));
-		await handleFAQResponse(msg, now); // Pass 'now' to handleFAQResponse
-	}); */
-
 	bot.on('messageCreate', async msg => {
 		// Ignore all bot messages right away
 		if (msg.author.bot) return;
@@ -155,7 +118,7 @@ function getTokenSimilarity(userSet: Set<string>, faqSet: Set<string>): number {
 }
 
 
-async function handleFAQResponse(msg: Message, now: number): Promise<void> {
+export async function handleFAQResponse(msg: Message, now: number): Promise<void> {
 	if (msg.author.bot) return;
 
 	// Check if auto-responses are disabled for this channel
@@ -186,7 +149,7 @@ async function handleFAQResponse(msg: Message, now: number): Promise<void> {
 	);
 
 	// Only count toward rate limit if FAQ cooldown passes
-	const userRateLimit = rateLimits.get(msg.author.id)!; // Already set in messageCreate
+	const userRateLimit = rateLimits.get(msg.author.id) || { timestamps: [] }; // Already set in messageCreate
 	userRateLimit.timestamps.push(now);
 	rateLimits.set(msg.author.id, userRateLimit);
 
@@ -233,7 +196,7 @@ async function handleFAQResponse(msg: Message, now: number): Promise<void> {
 
 	if (foundFAQ) {
 		// No longer log to BOT_RESPONSES collection - using faq_stats directly instead
-		
+
 		// Track FAQ usage statistics
 		const faqId = foundFAQ._id || foundFAQ.question;
 		await msg.client.mongo.collection(DB.CLIENT_DATA).updateOne(
@@ -265,11 +228,11 @@ async function handleFAQResponse(msg: Message, now: number): Promise<void> {
 			.setColor('#00FF00')
 			.setTimestamp();
 
-		if (foundFAQ.link) {
-			embed.addFields({ name: 'For more details', value: foundFAQ.link });
-		}
-
-		embed.addFields({ name: 'Did you find this response helpful?', value: '👍 Yes | 👎 No' });
+		embed.addFields(
+			{ name: '\u200B', value: '\u200B' },
+			{ name: 'For more details', value: foundFAQ.link },
+			{ name: 'Did you find this response helpful?', value: '👍 Yes | 👎 No' }
+		);
 
 		const reply = await msg.reply({
 			content: `${msg.member}, here is the answer to your question:`,
