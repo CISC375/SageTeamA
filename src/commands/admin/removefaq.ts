@@ -9,7 +9,8 @@ import {
 	ApplicationCommandPermissions,
 	Events,
 	ButtonBuilder,
-	ButtonStyle
+	ButtonStyle,
+	ButtonInteraction
 } from 'discord.js';
 import { DB } from '@root/config';
 
@@ -324,7 +325,7 @@ export async function handleQuestionConfirmation(
 	});
 }
 
-export async function deleteQuestion(interaction: StringSelectMenuInteraction) {
+export async function deleteQuestion(interaction: ButtonInteraction) {
 	await interaction.deferUpdate();
 
 	// Extract the question to be deleted from the embed description

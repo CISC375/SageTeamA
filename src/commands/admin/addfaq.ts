@@ -20,7 +20,7 @@ export default class extends Command {
 	async run(interaction: ChatInputCommandInteraction): Promise<InteractionResponse<boolean> | void> {
 		// Create a new modal for adding a FAQ
 		const modal = new ModalBuilder()
-			.setCustomId('faqModal')
+			.setCustomId('add_faq_modal')
 			.setTitle('Add New FAQ');
 
 		// Create input fields for the modal
@@ -72,7 +72,7 @@ export default class extends Command {
 }
 
 export async function handleModalSubmit(interaction) {
-	if (interaction.customId === 'faqModal') {
+	if (interaction.customId === 'add_faq_modal') {
 		await interaction.reply({ content: 'Working on it', ephemeral: true });
 
 		// Retrieve input values from the modal
