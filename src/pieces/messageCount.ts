@@ -258,9 +258,9 @@ export async function handleFAQResponse(msg: Message, now: number): Promise<void
 
 			if (reaction.emoji.name === '👍') {
 				const feedbackResponse = 'Great! Glad you found it helpful!';
-				await msg.reply(feedbackResponse);
+				await msg.author.send(feedbackResponse);
 			} else if (reaction.emoji.name === '👎') {
-				await msg.reply("Sorry that you didn't find it helpful. The DevOps team will continue improving the answers to ensure satisfaction.");
+				await msg.author.send("Sorry that you didn't find it helpful. The DevOps team will continue improving the answers to ensure satisfaction.");
 			}
 			await reply.reactions.removeAll();
 			collector.stop();
