@@ -376,7 +376,7 @@ export async function handleModifyQuestion(interaction) {
 		.setLabel('Useful Link')
 		.setStyle(TextInputStyle.Short)
 		.setValue(questionData.link)
-		.setRequired(true);
+		.setRequired(false);
 
 	// Add input fields to the modal
 	modal.addComponents(
