@@ -50,7 +50,7 @@ export default class extends Command {
 			.setLabel('Useful Link')
 			.setPlaceholder('Add useful link to answer the question.')
 			.setStyle(TextInputStyle.Short)
-			.setRequired(true);
+			.setRequired(false);
 
 		// Add input fields to the modal
 		modal.addComponents(
@@ -79,7 +79,7 @@ export async function handleModalSubmit(interaction) {
 		const question = interaction.fields.getTextInputValue('question');
 		const answer = interaction.fields.getTextInputValue('answer');
 		const category = interaction.fields.getTextInputValue('category');
-		const link = interaction.fields.getTextInputValue('link');
+		const link = interaction.fields.getTextInputValue('link')? interaction.fields.getTextInputValue('link') : 'N/A';
 
 		// Check if the FAQ already exists in the database
 		const existingFAQ = await interaction.client.mongo.collection(DB.FAQS).findOne({ question: question });

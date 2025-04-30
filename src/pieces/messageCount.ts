@@ -229,8 +229,17 @@ export async function handleFAQResponse(msg: Message, now: number): Promise<void
 			.setTimestamp();
 
 		embed.addFields(
+			{ name: '\n', value: '\n' },
+		);
+
+		if (foundFAQ.link) {
+			embed.addFields(
+				{ name: 'For more details', value: foundFAQ.link },
+			);
+		}
+
+		embed.addFields(
 			{ name: '\u200B', value: '\u200B' },
-			{ name: 'For more details', value: foundFAQ.link },
 			{ name: 'Did you find this response helpful?', value: '👍 Yes | 👎 No' }
 		);
 
