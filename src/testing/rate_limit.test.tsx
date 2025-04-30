@@ -115,7 +115,10 @@ describe('Rate Limiting', () => {
 			return null;
 		});
 		mockFind.mockReturnValue({
-			toArray: () => Promise.resolve([{ question: 'test question', answer: 'test answer', category: 'test', _id: 'faq1', link: 'http://example.com' }])
+			toArray: () =>
+				Promise.resolve([
+					{ question: 'test question', answer: 'test answer', category: 'test', _id: 'faq1', link: 'http://example.com' }
+				])
 		});
 		mockUpdateOne.mockResolvedValue({});
 
@@ -178,7 +181,10 @@ describe('Rate Limiting', () => {
 			return null;
 		});
 		mockFind.mockReturnValue({
-			toArray: () => Promise.resolve([{ question: 'test question', answer: 'test answer', category: 'test', _id: 'faq1', link: 'http://example.com' }])
+			toArray: () =>
+				Promise.resolve([
+					{ question: 'test question', answer: 'test answer', category: 'test', _id: 'faq1', link: 'http://example.com' }
+				])
 		});
 		mockUpdateOne.mockResolvedValue({});
 
@@ -231,10 +237,17 @@ describe('FAQ Cooldown', () => {
 			return {};
 		});
 
-		const now = Date.now();
+		const now = 2000000;
 		mockFindOne
-			.mockResolvedValueOnce({ disabledAutoResponseChannels: [] })
-			.mockResolvedValueOnce({ value: now + 2000 });
+			.mockResolvedValueOnce({ disabledAutoResponseChannels: [] }) // bot check
+			.mockResolvedValueOnce({ value: now + 2000 }); // cooldown active
+
+		mockFind.mockReturnValue({
+			toArray: () =>
+				Promise.resolve([
+					{ question: 'test question', answer: 'test answer', category: 'test', _id: 'faq1', link: 'http://example.com' }
+				])
+		});
 
 		await handleFAQResponse(mockMessage as Message, now);
 
@@ -267,21 +280,24 @@ describe('FAQ Cooldown', () => {
 			return {};
 		});
 
-		const now = Date.now();
-		mockFindOne
-			.mockResolvedValueOnce({ disabledAutoResponseChannels: [] })
-			.mockResolvedValueOnce(null);
+		const now = 2000000;
+		const faq = { question: 'test question', answer: 'test answer', category: 'test', _id: 'faq1', link: 'http://example.com' };
 
-		mockFind.mockReturnValue({
-			toArray: () => Promise.resolve([{ question: 'test question', answer: 'test answer', category: 'test', _id: 'faq1', link: 'http://example.com' }])
+		mockFindOne
+			.mockResolvedValueOnce({ disabledAutoResponseChannels: [] }) // bot check
+			.mockResolvedValueOnce(null); // no cooldown
+
+		mockFind.mockReturnValueOnce({
+			toArray: () => Promise.resolve([faq])
 		});
-		mockUpdateOne.mockResolvedValue({});
+		mockUpdateOne.mockResolvedValueOnce({}); // FAQ stats update
 
 		await handleFAQResponse(mockMessage as Message, now);
 
 		expect(mockMessage.reply).toHaveBeenCalledWith(
 			expect.objectContaining({
-				content: expect.stringContaining('here is the answer')
+				content: expect.stringContaining('here is the answer'),
+				embeds: expect.any(Array)
 			})
 		);
 		expect(mockMessage.delete).not.toHaveBeenCalled();
