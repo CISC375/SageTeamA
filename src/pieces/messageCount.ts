@@ -11,14 +11,12 @@ const TIME_WINDOW = 60 * 1000; // 1 minute
 interface RateLimitData {
 	timestamps: number[]; // Array of timestamps for the last 5 questions
 	lastDMWarning?: number; // Timestamp of the last warning message
-
 }
 const rateLimits = new Map<string, RateLimitData>(); // Map to store user rate limit data
 
-
 const startingColor = 80;
 const greenIncrement = 8;
-const maxGreen:[number, number, number] = [0, 255, 0];
+const maxGreen: [number, number, number] = [0, 255, 0];
 const maxLevel = 20;
 const countedChannelTypes = [
 	ChannelType.GuildText,
@@ -31,36 +29,7 @@ async function register(bot: Client): Promise<void> {
 		// Ignore all bot messages right away
 		if (msg.author.bot) return;
 
-		// Rate limiting logic for messages only
-		const userId = msg.author.id;
 		const now = Date.now();
-		const userRateLimit = rateLimits.get(userId) || { timestamps: [] };
-
-		// Filter out timestamps older than 1 minute
-		userRateLimit.timestamps = userRateLimit.timestamps.filter(ts => now - ts < TIME_WINDOW);
-
-		// Check if user has hit the limit
-		if (userRateLimit.timestamps.length >= MAX_COMMANDS) {
-			const timeUntilReset = Math.ceil((TIME_WINDOW - (now - userRateLimit.timestamps[0])) / 1000);
-			const lastDMWarning = userRateLimit.lastDMWarning || 0;
-			const DM_WARNING_COOLDOWN = 0; // 0 seconds to ensure quick deletion
-
-			if (now - lastDMWarning >= DM_WARNING_COOLDOWN) {
-				try {
-					await msg.delete(); // Delete the message that triggered the rate limit
-					await msg.author.send(`You're asking too many questions! Please wait ${timeUntilReset} seconds before asking another one.`);
-					userRateLimit.lastDMWarning = now;
-					rateLimits.set(userId, userRateLimit);
-				} catch (error) {
-					// Log error if DM fails (e.g., user has DMs disabled)
-					console.error(`Failed to send DM to ${msg.author.id}:`, error);
-				}
-			}
-			return; // Stop further processing
-		}
-
-		// Update the Map only if FAQ processing succeeds (moved into handleFAQResponse)
-		rateLimits.set(userId, userRateLimit);
 
 		// Original processing
 		countMessages(msg).catch(async error => bot.emit('error', error));
@@ -92,7 +61,6 @@ async function countMessages(msg: Message): Promise<void> {
 		countInc++;
 	}
 
-
 	bot.mongo.collection(DB.USERS).findOneAndUpdate(
 		{ discordId: msg.author.id },
 		{ $inc: { count: countInc, curExp: -1 } },
@@ -101,7 +69,7 @@ async function countMessages(msg: Message): Promise<void> {
 	);
 }
 
-// helper functions
+// Helper functions
 function getKeywordSet(text: string): Set<string> {
 	return new Set(
 		text
@@ -117,57 +85,25 @@ function getTokenSimilarity(userSet: Set<string>, faqSet: Set<string>): number {
 	return intersection.size / Math.max(userSet.size, faqSet.size);
 }
 
+interface FAQ {
+	_id?: string;
+	question: string;
+	answer: string;
+	category: string;
+	link?: string;
+}
 
-export async function handleFAQResponse(msg: Message, now: number): Promise<void> {
-	if (msg.author.bot) return;
-
-	// Check if auto-responses are disabled for this channel
-	const sageData = await msg.client.mongo.collection(DB.CLIENT_DATA).findOne({ _id: msg.client.user.id });
-	const disabledChannels = sageData?.disabledAutoResponseChannels || [];
-
-	// If this channel is in the disabled list, don't process auto-responses
-	if (disabledChannels.includes(msg.channel.id)) {
-		return;
-	}
-
-	// Check FAQ cooldown first
-	const cooldown = 3 * 1000;
-	const cooldownKey = `faqCooldown_${msg.author.id}`;
-	const cooldownEnd = await msg.client.mongo.collection(DB.CLIENT_DATA).findOne({ _id: cooldownKey });
-
-	if (cooldownEnd && cooldownEnd.value > now) {
-		const remainingTime = Math.ceil((cooldownEnd.value - now) / 1000);
-		await msg.reply(`You're asking too quickly! Please wait ${remainingTime} seconds before asking another question.`);
-		return; // Exit without counting toward rate limit
-	}
-
-	// Set the FAQ cooldown
-	await msg.client.mongo.collection(DB.CLIENT_DATA).updateOne(
-		{ _id: cooldownKey },
-		{ $set: { value: now + cooldown } },
-		{ upsert: true }
-	);
-
-	// Only count toward rate limit if FAQ cooldown passes
-	const userRateLimit = rateLimits.get(msg.author.id) || { timestamps: [] }; // Already set in messageCreate
-	userRateLimit.timestamps.push(now);
-	rateLimits.set(msg.author.id, userRateLimit);
-
-	const userQuestion = msg.content.trim().toLowerCase();
-	const faqs = await msg.client.mongo.collection(DB.FAQS).find().toArray();
-
+async function findMatchingFAQ(userQuestion: string, faqs: FAQ[]): Promise<FAQ | null> {
+	const userKeywordSet = getKeywordSet(userQuestion);
 	let foundFAQ = null;
 	let bestMatchScore = 0;
-
-	const userKeywordSet = getKeywordSet(userQuestion);
 
 	for (const faq of faqs) {
 		const faqQuestion = faq.question.toLowerCase();
 
 		// Exact Match
 		if (userQuestion === faqQuestion) {
-			foundFAQ = faq;
-			break;
+			return faq;
 		}
 
 		// Get Token Sets
@@ -194,86 +130,164 @@ export async function handleFAQResponse(msg: Message, now: number): Promise<void
 		}
 	}
 
-	if (foundFAQ) {
-		// No longer log to BOT_RESPONSES collection - using faq_stats directly instead
+	return foundFAQ;
+}
 
-		// Track FAQ usage statistics
-		const faqId = foundFAQ._id || foundFAQ.question;
+async function applyRateLimit(msg: Message, now: number): Promise<boolean> {
+	const userId = msg.author.id;
+	const userRateLimit = rateLimits.get(userId) || { timestamps: [] };
+
+	// Filter out timestamps older than 1 minute
+	userRateLimit.timestamps = userRateLimit.timestamps.filter(ts => now - ts < TIME_WINDOW);
+
+	// Check if user has hit the limit
+	if (userRateLimit.timestamps.length >= MAX_COMMANDS) {
+		const timeUntilReset = Math.ceil((TIME_WINDOW - (now - userRateLimit.timestamps[0])) / 1000);
+		const lastDMWarning = userRateLimit.lastDMWarning || 0;
+		const DM_WARNING_COOLDOWN = 0; // 0 seconds to ensure quick deletion
+
+		if (now - lastDMWarning >= DM_WARNING_COOLDOWN) {
+			try {
+				await msg.delete(); // Delete the message that triggered the rate limit
+				await msg.author.send(`You're asking too many questions! Please wait ${timeUntilReset} seconds before asking another one.`);
+				userRateLimit.lastDMWarning = now;
+				rateLimits.set(userId, userRateLimit);
+			} catch (error) {
+				// Log error if DM fails (e.g., user has DMs disabled)
+				console.error(`Failed to send DM to ${msg.author.id}:`, error);
+			}
+		}
+		return false; // Rate limit hit, stop processing
+	}
+
+	// Update rate limit only if FAQ is answered
+	userRateLimit.timestamps.push(now);
+	rateLimits.set(userId, userRateLimit);
+	return true; // Rate limit not hit, proceed
+}
+
+async function sendFAQReply(msg: Message, foundFAQ: FAQ, now: number): Promise<void> {
+	// Track FAQ usage statistics
+	const faqId = foundFAQ._id || foundFAQ.question;
+	await msg.client.mongo.collection(DB.CLIENT_DATA).updateOne(
+		{ _id: `faq_stats_${faqId}` },
+		{
+			$inc: {
+				usageCount: 1,
+				[`categories.${foundFAQ.category}`]: 1
+			},
+			$set: {
+				lastUsed: now,
+				question: foundFAQ.question,
+				category: foundFAQ.category
+			},
+			$push: {
+				usageHistory: {
+					userId: msg.author.id,
+					username: msg.author.username,
+					timestamp: now
+				}
+			}
+		},
+		{ upsert: true }
+	);
+
+	const embed = new EmbedBuilder()
+		.setTitle(foundFAQ.question)
+		.setDescription(foundFAQ.answer)
+		.setColor('#00FF00')
+		.setTimestamp();
+
+	embed.addFields(
+		{ name: '\n', value: '\n' }
+	);
+
+	if (foundFAQ.link) {
+		embed.addFields(
+			{ name: 'For more details', value: foundFAQ.link }
+		);
+	}
+
+	embed.addFields(
+		{ name: '\u200B', value: '\u200B' },
+		{ name: 'Did you find this response helpful?', value: '👍 Yes | 👎 No' }
+	);
+
+	const reply = await msg.reply({
+		content: `${msg.member}, here is the answer to your question:`,
+		embeds: [embed]
+	});
+
+	await reply.react('👍');
+	await reply.react('👎');
+
+	const filter = (reaction: any, user: any) =>
+		['👍', '👎'].includes(reaction.emoji.name) && user.id === msg.author.id;
+	const collector = reply.createReactionCollector({ filter, time: 60000 });
+
+	collector.on('collect', async (reaction) => {
+		// Track feedback on FAQ
+		const feedback = reaction.emoji.name === '👍' ? 'positive' : 'negative';
 		await msg.client.mongo.collection(DB.CLIENT_DATA).updateOne(
 			{ _id: `faq_stats_${faqId}` },
 			{
-				$inc: {
-					usageCount: 1,
-					[`categories.${foundFAQ.category}`]: 1
-				},
-				$set: {
-					lastUsed: now,
-					question: foundFAQ.question,
-					category: foundFAQ.category
-				},
-				$push: {
-					usageHistory: {
-						userId: msg.author.id,
-						username: msg.author.username,
-						timestamp: now
-					}
-				}
-			},
+				$inc: { [`feedback.${feedback}`]: 1 }
+			}
+		);
+
+		if (reaction.emoji.name === '👍') {
+			const feedbackResponse = 'Great! Glad you found it helpful!';
+			await msg.author.send(feedbackResponse);
+		} else if (reaction.emoji.name === '👎') {
+			await msg.author.send("Sorry that you didn't find it helpful. The DevOps team will continue improving the answers to ensure satisfaction.");
+		}
+		await reply.reactions.removeAll();
+		collector.stop();
+	});
+}
+
+export async function handleFAQResponse(msg: Message, now: number): Promise<void> {
+	if (msg.author.bot) return;
+
+	// Check if auto-responses are disabled for this channel
+	const sageData = await msg.client.mongo.collection(DB.CLIENT_DATA).findOne({ _id: msg.client.user.id });
+	const disabledChannels = sageData?.disabledAutoResponseChannels || [];
+
+	// If this channel is in the disabled list, don't process auto-responses
+	if (disabledChannels.includes(msg.channel.id)) {
+		return;
+	}
+
+	const userQuestion = msg.content.trim().toLowerCase();
+	const faqs = await msg.client.mongo.collection(DB.FAQS).find().toArray();
+
+	const foundFAQ = await findMatchingFAQ(userQuestion, faqs);
+
+	if (foundFAQ) {
+		// Check FAQ cooldown for FAQ questions
+		const cooldown = 3 * 1000;
+		const cooldownKey = `faqCooldown_${msg.author.id}`;
+		const cooldownEnd = await msg.client.mongo.collection(DB.CLIENT_DATA).findOne({ _id: cooldownKey });
+
+		if (cooldownEnd && cooldownEnd.value > now) {
+			const remainingTime = Math.ceil((cooldownEnd.value - now) / 1000);
+			await msg.reply(`You're asking too quickly! Please wait ${remainingTime} seconds before asking another question.`);
+			return;
+		}
+
+		// Set the FAQ cooldown
+		await msg.client.mongo.collection(DB.CLIENT_DATA).updateOne(
+			{ _id: cooldownKey },
+			{ $set: { value: now + cooldown } },
 			{ upsert: true }
 		);
 
-		const embed = new EmbedBuilder()
-			.setTitle(foundFAQ.question)
-			.setDescription(foundFAQ.answer)
-			.setColor('#00FF00')
-			.setTimestamp();
+		// Apply rate limiting
+		const canProceed = await applyRateLimit(msg, now);
+		if (!canProceed) return;
 
-		embed.addFields(
-			{ name: '\n', value: '\n' },
-		);
-
-		if (foundFAQ.link) {
-			embed.addFields(
-				{ name: 'For more details', value: foundFAQ.link },
-			);
-		}
-
-		embed.addFields(
-			{ name: '\u200B', value: '\u200B' },
-			{ name: 'Did you find this response helpful?', value: '👍 Yes | 👎 No' }
-		);
-
-		const reply = await msg.reply({
-			content: `${msg.member}, here is the answer to your question:`,
-			embeds: [embed]
-		});
-
-		await reply.react('👍');
-		await reply.react('👎');
-
-		const filter = (reaction: any, user: any) =>
-			['👍', '👎'].includes(reaction.emoji.name) && user.id === msg.author.id;
-		const collector = reply.createReactionCollector({ filter, time: 60000 });
-
-		collector.on('collect', async (reaction) => {
-			// Track feedback on FAQ
-			const feedback = reaction.emoji.name === '👍' ? 'positive' : 'negative';
-			await msg.client.mongo.collection(DB.CLIENT_DATA).updateOne(
-				{ _id: `faq_stats_${faqId}` },
-				{
-					$inc: { [`feedback.${feedback}`]: 1 }
-				}
-			);
-
-			if (reaction.emoji.name === '👍') {
-				const feedbackResponse = 'Great! Glad you found it helpful!';
-				await msg.author.send(feedbackResponse);
-			} else if (reaction.emoji.name === '👎') {
-				await msg.author.send("Sorry that you didn't find it helpful. The DevOps team will continue improving the answers to ensure satisfaction.");
-			}
-			await reply.reactions.removeAll();
-			collector.stop();
-		});
+		// Send FAQ reply
+		await sendFAQReply(msg, foundFAQ, now);
 	}
 }
 
