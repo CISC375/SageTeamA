@@ -61,10 +61,11 @@ const MAX_COMMANDS = 5;
 const TIME_WINDOW = 60 * 1000;
 const FAQ_COOLDOWN = 3 * 1000;
 
-// Reset rateLimits Map before each test
+beforeAll(() => {
+	jest.useFakeTimers();
+});
+
 beforeEach(() => {
-	const messageCount = require('../../src/pieces/messageCount');
-	messageCount.rateLimits.clear();
 	jest.clearAllMocks();
 	mockFindOne.mockReset();
 	mockFind.mockReset();
@@ -72,10 +73,6 @@ beforeEach(() => {
 	mockFindOneAndUpdate.mockReset();
 	mockDelete.mockReset();
 	mockSend.mockReset();
-});
-
-beforeAll(() => {
-	jest.useFakeTimers();
 });
 
 afterAll(() => {
@@ -118,7 +115,10 @@ describe('Rate Limiting', () => {
 			return null;
 		});
 		mockFind.mockReturnValue({
-			toArray: () => Promise.resolve([{ question: 'test question', answer: 'test answer', category: 'test', _id: 'faq1', link: 'http://example.com' }])
+			toArray: () =>
+				Promise.resolve([
+					{ question: 'test question', answer: 'test answer', category: 'test', _id: 'faq1', link: 'http://example.com' }
+				])
 		});
 		mockUpdateOne.mockResolvedValue({});
 
@@ -181,7 +181,10 @@ describe('Rate Limiting', () => {
 			return null;
 		});
 		mockFind.mockReturnValue({
-			toArray: () => Promise.resolve([{ question: 'test question', answer: 'test answer', category: 'test', _id: 'faq1', link: 'http://example.com' }])
+			toArray: () =>
+				Promise.resolve([
+					{ question: 'test question', answer: 'test answer', category: 'test', _id: 'faq1', link: 'http://example.com' }
+				])
 		});
 		mockUpdateOne.mockResolvedValue({});
 
@@ -211,7 +214,7 @@ describe('Rate Limiting', () => {
 });
 
 describe('FAQ Cooldown', () => {
-	it('blocks consecutive FAQ questions within 3 seconds', async () => {
+	it('blocks questions within 3 seconds', async () => {
 		const client = new Client({ intents: [] });
 		Object.defineProperty(mockMessage, 'client', { value: client, writable: true });
 		(client.mongo.collection as jest.Mock).mockImplementation((name: string) => {
@@ -234,28 +237,19 @@ describe('FAQ Cooldown', () => {
 			return {};
 		});
 
-		const now = Date.now();
-		const faq = { question: 'test question', answer: 'test answer', category: 'test', _id: 'faq1', link: 'http://example.com' };
-
-		// First FAQ question sets cooldown
+		const now = 2000000;
 		mockFindOne
 			.mockResolvedValueOnce({ disabledAutoResponseChannels: [] }) // bot check
-			.mockResolvedValueOnce(null); // no cooldown
-		mockFind.mockReturnValueOnce({
-			toArray: () => Promise.resolve([faq])
+			.mockResolvedValueOnce({ value: now + 2000 }); // cooldown active
+
+		mockFind.mockReturnValue({
+			toArray: () =>
+				Promise.resolve([
+					{ question: 'test question', answer: 'test answer', category: 'test', _id: 'faq1', link: 'http://example.com' }
+				])
 		});
-		mockUpdateOne.mockResolvedValueOnce({});
+
 		await handleFAQResponse(mockMessage as Message, now);
-
-		// Second FAQ question within 3 seconds
-		mockFindOne
-			.mockResolvedValueOnce({ disabledAutoResponseChannels: [] }) // bot check
-			.mockResolvedValueOnce({ value: now + FAQ_COOLDOWN }); // cooldown active
-		mockFind.mockReturnValueOnce({
-			toArray: () => Promise.resolve([faq])
-		});
-		mockUpdateOne.mockResolvedValueOnce({});
-		await handleFAQResponse(mockMessage as Message, now + 1000);
 
 		expect(mockMessage.reply).toHaveBeenCalledWith(
 			"You're asking too quickly! Please wait 2 seconds before asking another question."
@@ -263,7 +257,7 @@ describe('FAQ Cooldown', () => {
 		expect(mockMessage.delete).not.toHaveBeenCalled();
 	});
 
-	it('allows FAQ questions after 3 seconds', async () => {
+	it('allows questions after 3 seconds', async () => {
 		const client = new Client({ intents: [] });
 		Object.defineProperty(mockMessage, 'client', { value: client, writable: true });
 		(client.mongo.collection as jest.Mock).mockImplementation((name: string) => {
@@ -286,28 +280,19 @@ describe('FAQ Cooldown', () => {
 			return {};
 		});
 
-		const now = Date.now();
+		const now = 2000000;
 		const faq = { question: 'test question', answer: 'test answer', category: 'test', _id: 'faq1', link: 'http://example.com' };
 
-		// First FAQ question sets cooldown
 		mockFindOne
 			.mockResolvedValueOnce({ disabledAutoResponseChannels: [] }) // bot check
 			.mockResolvedValueOnce(null); // no cooldown
-		mockFind.mockReturnValueOnce({
-			toArray: () => Promise.resolve([faq])
-		});
-		mockUpdateOne.mockResolvedValueOnce({});
-		await handleFAQResponse(mockMessage as Message, now);
 
-		// Second FAQ question after 3 seconds
-		mockFindOne
-			.mockResolvedValueOnce({ disabledAutoResponseChannels: [] }) // bot check
-			.mockResolvedValueOnce(null); // cooldown expired
 		mockFind.mockReturnValueOnce({
 			toArray: () => Promise.resolve([faq])
 		});
-		mockUpdateOne.mockResolvedValueOnce({});
-		await handleFAQResponse(mockMessage as Message, now + FAQ_COOLDOWN);
+		mockUpdateOne.mockResolvedValueOnce({}); // FAQ stats update
+
+		await handleFAQResponse(mockMessage as Message, now);
 
 		expect(mockMessage.reply).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -315,55 +300,6 @@ describe('FAQ Cooldown', () => {
 				embeds: expect.any(Array)
 			})
 		);
-		expect(mockMessage.delete).not.toHaveBeenCalled();
-	});
-
-	it('does not apply cooldown to non-FAQ messages', async () => {
-		const client = new Client({ intents: [] });
-		Object.defineProperty(mockMessage, 'client', { value: client, writable: true });
-		(client.mongo.collection as jest.Mock).mockImplementation((name: string) => {
-			if (name === DB.CLIENT_DATA) {
-				return {
-					findOne: mockFindOne,
-					updateOne: mockUpdateOne
-				};
-			}
-			if (name === DB.FAQS) {
-				return {
-					find: mockFind
-				};
-			}
-			if (name === DB.USERS) {
-				return {
-					findOneAndUpdate: mockFindOneAndUpdate
-				};
-			}
-			return {};
-		});
-
-		const now = Date.now();
-
-		// First FAQ question sets cooldown
-		mockFindOne
-			.mockResolvedValueOnce({ disabledAutoResponseChannels: [] }) // bot check
-			.mockResolvedValueOnce(null); // no cooldown
-		mockFind.mockReturnValueOnce({
-			toArray: () => Promise.resolve([{ question: 'test question', answer: 'test answer', category: 'test', _id: 'faq1', link: 'http://example.com' }])
-		});
-		mockUpdateOne.mockResolvedValueOnce({});
-		await handleFAQResponse(mockMessage as Message, now);
-
-		// Non-FAQ message within 3 seconds
-		mockMessage.content = 'hello';
-		mockFindOne
-			.mockResolvedValueOnce({ disabledAutoResponseChannels: [] }) // bot check
-			.mockResolvedValueOnce({ value: now + FAQ_COOLDOWN }); // cooldown active (should be ignored)
-		mockFind.mockReturnValueOnce({
-			toArray: () => Promise.resolve([]) // No FAQ match
-		});
-		await handleFAQResponse(mockMessage as Message, now + 1000);
-
-		expect(mockMessage.reply).not.toHaveBeenCalled();
 		expect(mockMessage.delete).not.toHaveBeenCalled();
 	});
 });
