@@ -111,7 +111,7 @@ export default class extends Command {
 		};
 		await interaction.client.mongo.collection(DB.COURSES).insertOne(newCourse);
 
-		// await updateDropdowns(interaction);
+		await updateDropdowns(interaction);
 
 		interaction.editReply(`Successfully added course with ID ${course}`);
 	}

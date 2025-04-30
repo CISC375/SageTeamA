@@ -19,12 +19,13 @@ export default class extends Command {
 	description = "Provides list of all saved FAQs questions.";
 	runInDM = false;
 
-	async run(interaction: ChatInputCommandInteraction): Promise<InteractionResponse<boolean> | void> {
+	async run(
+		interaction: ChatInputCommandInteraction
+	): Promise<InteractionResponse<boolean> | void> {
 		setupCategoryHandler(interaction.client);
 
-		const isAdmin = interaction.memberPermissions?.has("ManageGuild");
-		const channelName = interaction.channel?.name || "";
-		const isCourseChannel = /^[0-9]+$/.test(channelName);
+		const channelName = interaction.channel?.parent?.name || "";
+		const isCourseChannel = channelName.startsWith("CISC");
 
 		var categories = await interaction.client.mongo
 			.collection(DB.FAQS)
@@ -49,11 +50,13 @@ export default class extends Command {
 		const buttonRow = new ActionRowBuilder<ButtonBuilder>();
 		for (const category of categories) {
 			if (category === "Course") {
-				if (!isAdmin && isCourseChannel) {
+				if (isCourseChannel) {
 					buttonRow.addComponents(
 						new ButtonBuilder()
-							.setCustomId(`faq_course/${channelName}`)
-							.setLabel(`CISC ${channelName}`)
+							.setCustomId(
+								`faq_Course/${channelName.split("/CISC ")[1]}`
+							)
+							.setLabel(`${channelName}`)
 							.setStyle(ButtonStyle.Secondary)
 					);
 				} else {
@@ -99,10 +102,6 @@ export async function setupCategoryHandler(client) {
 			if (interaction.customId === "faq_course_modal") {
 				return handleModalSubmit(interaction);
 			}
-		} else if (interaction.isStringSelectMenu()) {
-			if (interaction.customId.startsWith("faq_course_select_")) {
-				return handleSelect(interaction);
-			}
 		}
 	};
 	client.on(Events.InteractionCreate, interactionListener);
@@ -129,79 +128,71 @@ export async function showCourseIdModal(interaction: ButtonInteraction) {
 export async function handleButton(interaction: ButtonInteraction) {
 	const category = interaction.customId.replace("faq_", "");
 
-	if (category.startsWith("Course")) {
-		const isAdmin = interaction.memberPermissions?.has("ManageGuild");
-		const channelName = interaction.channel?.name || "";
-		const isCourseChannel = /^[0-9]+$/.test(channelName);
+	try {
+		if (category.startsWith("Course")) {
+			const channelName = interaction.channel?.name || "";
+			const isCourseChannel = channelName.startsWith("CISC");
 
-		if (category === "Course" && (isAdmin && !isCourseChannel)) {
-			return showCourseIdModal(interaction);
+			if (category === "Course" && !isCourseChannel) {
+				return await showCourseIdModal(interaction);
+			} else {
+				const courseCategory = `Course/${channelName}`;
+				return await sendFaqEmbed(interaction, courseCategory);
+			}
+		}
+
+		await sendFaqEmbed(interaction, category);
+	} catch (err) {
+		// DiscordAPIError[10062]: Unknown interaction
+		if (err.code === 10062) {
+			// silently ignore expired or already acknowledged interaction
 		} else {
-			const courseCategory = `Course/${channelName}`;
-			return sendFaqEmbed(interaction);
+			console.error("handleButton error:", err);
 		}
 	}
-
-	await sendFaqEmbed(interaction);
 }
 
 export async function handleSelect(interaction: StringSelectMenuInteraction) {
-	const selectedCategory = interaction.values[0];
-	await sendFaqEmbed(interaction);
+	try {
+		const selectedCategory = interaction.values[0];
+		await sendFaqEmbed(interaction, selectedCategory);
+	} catch (err) {
+		if (err.code === 10062) {
+			// silently ignore expired or already acknowledged interaction
+		} else {
+			console.error("handleSelect error:", err);
+		}
+	}
 }
 
 export async function handleModalSubmit(interaction) {
-	const input = interaction.fields.getTextInputValue("course_id_input").trim();
+	try {
+		const input = interaction.fields
+			.getTextInputValue("course_id_input")
+			.trim();
 
-	if (!/^[0-9]+$/.test(input)) {
-		const errorEmbed = new EmbedBuilder()
-			.setColor("#FF0000")
-			.setTitle("Invalid Input")
-			.setDescription(`❌ Please enter a valid numeric Course ID.`);
-		return interaction.reply({
-			content: "",
-			embeds: [errorEmbed],
-			components: [],
-			ephemeral: true,
-		});
+		const category = `Course/${input}`;
+		await sendFaqEmbed(interaction, category);
+	} catch (err) {
+		if (err.code === 10062) {
+			// silently ignore expired or already acknowledged interaction
+		} else {
+			console.error("handleModalSubmit error:", err);
+		}
 	}
-
-	const category = `Course/${input}`;
-	await sendFaqEmbed(interaction);
 }
 
-export async function sendFaqEmbed(interaction) {
-	const category = interaction.customId.replace("faq_", "");
+export async function sendFaqEmbed(interaction, category) {
+	const channelName = interaction.channel?.parent?.name || "";
+	const isCourseChannel = channelName.startsWith("CISC");
 
-	console.log("Category:", category);
-
-	const isAdmin = interaction.memberPermissions?.has("ManageGuild");
-	const channelName = interaction.channel?.name || "";
-	const isCourseChannel = /^[0-9]+$/.test(channelName);
-
+	if (category.startsWith("Course") && isCourseChannel) {
+		category = `Course/${channelName.split("CISC ")[1]}`;
+	}
 	const faqs = await interaction.client.mongo
 		.collection(DB.FAQS)
-		.find({ category })
+		.find({ category: { $regex: `^${category}(/|$)` } })
 		.toArray();
-
-	if (faqs.length === 0) {
-		const errorEmbed = new EmbedBuilder()
-			.setColor("#FF0000")
-			.setTitle("Error")
-			.setDescription(`❌ No FAQs found for category: **${category}**`);
-		return interaction.update({
-			content: "",
-			embeds: [errorEmbed],
-			components: [],
-		});
-	}
-
-	const embed = new EmbedBuilder()
-		.setTitle(`📁 ${category.split("/")[0]}`)
-		.setDescription(
-			faqs.map((f, i) => `**Q${i + 1}.** ${f.question}`).join("\n\n")
-		)
-		.setTimestamp();
 
 	var allCategories = await interaction.client.mongo
 		.collection(DB.FAQS)
@@ -217,11 +208,13 @@ export async function sendFaqEmbed(interaction) {
 		const topCat = cat.split("/")[0];
 
 		if (topCat === "Course") {
-			if (!isAdmin && isCourseChannel) {
+			if (isCourseChannel) {
 				currentRow.addComponents(
 					new ButtonBuilder()
-						.setCustomId(`faq_course/${channelName}`)
-						.setLabel(`CISC ${channelName}`)
+						.setCustomId(
+							`faq_Course/${channelName.split("/CISC ")[1]}`
+						)
+						.setLabel(`${channelName}`)
 						.setStyle(ButtonStyle.Secondary)
 				);
 			} else if (currentRow.components.find) {
@@ -253,6 +246,29 @@ export async function sendFaqEmbed(interaction) {
 
 	if (currentRow.components.length > 0) {
 		rows.push(currentRow);
+	}
+
+	if (faqs.length === 0) {
+		const errorEmbed = new EmbedBuilder()
+			.setColor("#FF0000")
+			.setTitle("Error")
+			.setDescription(`❌ No FAQs found for category: **${category}**`);
+		return interaction.update({
+			content: "",
+			embeds: [errorEmbed],
+			components: rows,
+		});
+	}
+
+	const embed = new EmbedBuilder()
+		.setTitle(`📁 ${category.split("/")[0]}`)
+		.setDescription(
+			faqs.map((f, i) => `**Q${i + 1}.** ${f.question}`).join("\n\n")
+		)
+		.setTimestamp();
+
+	if (category.startsWith("Course")) {
+		embed.setTitle(`📁 CISC ${category.split("/")[1]}`);
 	}
 
 	return interaction.update({

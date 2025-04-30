@@ -110,7 +110,7 @@ export default class extends Command {
 					await interaction.client.mongo.collection(DB.USERS).updateMany({}, { $pull: { courses: courseId } });
 					await interaction.client.mongo.collection(DB.COURSES).findOneAndDelete({ name: courseId });
 
-					// await updateDropdowns(interaction);
+					await updateDropdowns(interaction);
 
 					staffRole.delete(reason);
 					studentRole.delete(reason);
