@@ -22,20 +22,24 @@ export default class extends Command {
 	async run(
 		interaction: ChatInputCommandInteraction
 	): Promise<InteractionResponse<boolean> | void> {
+		// Set up button and modal interaction handlers
 		setupCategoryHandler(interaction.client);
 
 		const channelName = interaction.channel?.parent?.name || "";
 		const isCourseChannel = channelName.startsWith("CISC");
 
+		// Fetch all unique FAQ categories from database
 		var categories = await interaction.client.mongo
 			.collection(DB.FAQS)
 			.distinct("category");
 
+		// Filter to top-level categories only (e.g., without subcategories)
 		categories = categories
 			.map((cat) => cat.split("/")[0])
 			.filter((value, index, self) => self.indexOf(value) === index);
 
 		if (categories.length === 0) {
+			// If there are no FAQs at all
 			const errorEmbed = new EmbedBuilder()
 				.setColor("#FF0000")
 				.setTitle("Error")
@@ -48,8 +52,10 @@ export default class extends Command {
 		}
 
 		const buttonRow = new ActionRowBuilder<ButtonBuilder>();
+		// Create one button for each top-level category
 		for (const category of categories) {
 			if (category === "Course") {
+				// Special handling: show course ID if in a course channel, otherwise open modal
 				if (isCourseChannel) {
 					buttonRow.addComponents(
 						new ButtonBuilder()
@@ -68,6 +74,7 @@ export default class extends Command {
 					);
 				}
 			} else {
+				// Normal category button
 				buttonRow.addComponents(
 					new ButtonBuilder()
 						.setCustomId(`faq_${category}`)
@@ -86,9 +93,8 @@ export default class extends Command {
 }
 
 export async function setupCategoryHandler(client) {
-	// Listener function to handle all relevant user interactions
+	// Register interaction handlers for buttons and modals
 	const interactionListener = async (interaction) => {
-		const userId = interaction.user.id;
 
 		// Handle button interactions
 		if (interaction.isButton()) {
@@ -99,6 +105,7 @@ export async function setupCategoryHandler(client) {
 				return handleButton(interaction);
 			}
 		} else if (interaction.isModalSubmit()) {
+			// Handle modal submissions
 			if (interaction.customId === "faq_course_modal") {
 				return handleModalSubmit(interaction);
 			}
@@ -107,6 +114,7 @@ export async function setupCategoryHandler(client) {
 	client.on(Events.InteractionCreate, interactionListener);
 }
 
+// Show a modal to input the course ID
 export async function showCourseIdModal(interaction: ButtonInteraction) {
 	const modal = new ModalBuilder()
 		.setCustomId("faq_course_modal")
@@ -125,6 +133,7 @@ export async function showCourseIdModal(interaction: ButtonInteraction) {
 	await interaction.showModal(modal);
 }
 
+// Handle button interactions for FAQ categories
 export async function handleButton(interaction: ButtonInteraction) {
 	const category = interaction.customId.replace("faq_", "");
 
@@ -134,8 +143,10 @@ export async function handleButton(interaction: ButtonInteraction) {
 			const isCourseChannel = channelName.startsWith("CISC");
 
 			if (category === "Course" && !isCourseChannel) {
+				// Show modal if the user is not in a course channel
 				return await showCourseIdModal(interaction);
 			} else {
+				// Handle course-specific FAQ categories
 				const courseCategory = `Course/${channelName}`;
 				return await sendFaqEmbed(interaction, courseCategory);
 			}
@@ -143,7 +154,7 @@ export async function handleButton(interaction: ButtonInteraction) {
 
 		await sendFaqEmbed(interaction, category);
 	} catch (err) {
-		// DiscordAPIError[10062]: Unknown interaction
+		// Handle expired or already acknowledged interactions
 		if (err.code === 10062) {
 			// silently ignore expired or already acknowledged interaction
 		} else {
@@ -152,19 +163,7 @@ export async function handleButton(interaction: ButtonInteraction) {
 	}
 }
 
-export async function handleSelect(interaction: StringSelectMenuInteraction) {
-	try {
-		const selectedCategory = interaction.values[0];
-		await sendFaqEmbed(interaction, selectedCategory);
-	} catch (err) {
-		if (err.code === 10062) {
-			// silently ignore expired or already acknowledged interaction
-		} else {
-			console.error("handleSelect error:", err);
-		}
-	}
-}
-
+// Handle modal submissions for course ID input
 export async function handleModalSubmit(interaction) {
 	try {
 		const input = interaction.fields
@@ -174,6 +173,7 @@ export async function handleModalSubmit(interaction) {
 		const category = `Course/${input}`;
 		await sendFaqEmbed(interaction, category);
 	} catch (err) {
+		// Handle expired or already acknowledged interactions
 		if (err.code === 10062) {
 			// silently ignore expired or already acknowledged interaction
 		} else {
@@ -182,18 +182,22 @@ export async function handleModalSubmit(interaction) {
 	}
 }
 
+// Send an FAQ embed for the selected category
 export async function sendFaqEmbed(interaction, category) {
 	const channelName = interaction.channel?.parent?.name || "";
 	const isCourseChannel = channelName.startsWith("CISC");
 
+	// Adjust category for course channels
 	if (category.startsWith("Course") && isCourseChannel) {
 		category = `Course/${channelName.split("CISC ")[1]}`;
 	}
+
 	const faqs = await interaction.client.mongo
 		.collection(DB.FAQS)
 		.find({ category: { $regex: `^${category}(/|$)` } })
 		.toArray();
 
+	// Fetch all categories for navigation buttons
 	var allCategories = await interaction.client.mongo
 		.collection(DB.FAQS)
 		.distinct("category");
@@ -202,13 +206,16 @@ export async function sendFaqEmbed(interaction, category) {
 		.map((cat) => cat.split("/")[0])
 		.filter((value, index, self) => self.indexOf(value) === index);
 
+	// Create navigation buttons for categories
 	const rows = [];
 	let currentRow = new ActionRowBuilder<ButtonBuilder>();
+
 	for (const [index, cat] of allCategories.entries()) {
 		const topCat = cat.split("/")[0];
 
 		if (topCat === "Course") {
 			if (isCourseChannel) {
+				// Special handling: show course ID if in a course channel, otherwise open modal
 				currentRow.addComponents(
 					new ButtonBuilder()
 						.setCustomId(
@@ -226,6 +233,7 @@ export async function sendFaqEmbed(interaction, category) {
 				);
 			}
 		} else {
+			// Normal category button
 			currentRow.addComponents(
 				new ButtonBuilder()
 					.setCustomId(`faq_${cat}`)
@@ -238,6 +246,7 @@ export async function sendFaqEmbed(interaction, category) {
 			);
 		}
 
+		// Create a new row per 5 buttons (Discord buttons are limited to 5 per row)
 		if ((index + 1) % 5 === 0) {
 			rows.push(currentRow);
 			currentRow = new ActionRowBuilder<ButtonBuilder>();
@@ -248,6 +257,7 @@ export async function sendFaqEmbed(interaction, category) {
 		rows.push(currentRow);
 	}
 
+	// If no FAQs are found, send an error message
 	if (faqs.length === 0) {
 		const errorEmbed = new EmbedBuilder()
 			.setColor("#FF0000")
@@ -260,6 +270,7 @@ export async function sendFaqEmbed(interaction, category) {
 		});
 	}
 
+	// Create and send the FAQ embed
 	const embed = new EmbedBuilder()
 		.setTitle(`📁 ${category.split("/")[0]}`)
 		.setDescription(
