@@ -7,6 +7,10 @@ import {
 	EmbedBuilder,
 	Events,
 	InteractionResponse,
+	ModalBuilder,
+	StringSelectMenuInteraction,
+	TextInputBuilder,
+	TextInputStyle,
 } from "discord.js";
 import { Command } from "@lib/types/Command";
 import { DB } from "@root/config";
@@ -17,6 +21,10 @@ export default class extends Command {
 
 	async run(interaction: ChatInputCommandInteraction): Promise<InteractionResponse<boolean> | void> {
 		setupCategoryHandler(interaction.client);
+
+		const isAdmin = interaction.memberPermissions?.has("ManageGuild");
+		const channelName = interaction.channel?.name || "";
+		const isCourseChannel = /^[0-9]+$/.test(channelName);
 
 		var categories = await interaction.client.mongo
 			.collection(DB.FAQS)
@@ -40,12 +48,30 @@ export default class extends Command {
 
 		const buttonRow = new ActionRowBuilder<ButtonBuilder>();
 		for (const category of categories) {
-			buttonRow.addComponents(
-				new ButtonBuilder()
-					.setCustomId(`faq_${category}`)
-					.setLabel(category)
-					.setStyle(ButtonStyle.Secondary)
-			);
+			if (category === "Course") {
+				if (!isAdmin && isCourseChannel) {
+					buttonRow.addComponents(
+						new ButtonBuilder()
+							.setCustomId(`faq_course/${channelName}`)
+							.setLabel(`CISC ${channelName}`)
+							.setStyle(ButtonStyle.Secondary)
+					);
+				} else {
+					buttonRow.addComponents(
+						new ButtonBuilder()
+							.setCustomId("faq_course_modal")
+							.setLabel("Course")
+							.setStyle(ButtonStyle.Secondary)
+					);
+				}
+			} else {
+				buttonRow.addComponents(
+					new ButtonBuilder()
+						.setCustomId(`faq_${category}`)
+						.setLabel(category)
+						.setStyle(ButtonStyle.Secondary)
+				);
+			}
 		}
 
 		return interaction.reply({
@@ -64,15 +90,94 @@ export async function setupCategoryHandler(client) {
 		// Handle button interactions
 		if (interaction.isButton()) {
 			if (interaction.customId.startsWith("faq_")) {
+				if (interaction.customId === "faq_course_modal") {
+					return showCourseIdModal(interaction);
+				}
 				return handleButton(interaction);
+			}
+		} else if (interaction.isModalSubmit()) {
+			if (interaction.customId === "faq_course_modal") {
+				return handleModalSubmit(interaction);
+			}
+		} else if (interaction.isStringSelectMenu()) {
+			if (interaction.customId.startsWith("faq_course_select_")) {
+				return handleSelect(interaction);
 			}
 		}
 	};
 	client.on(Events.InteractionCreate, interactionListener);
 }
 
+export async function showCourseIdModal(interaction: ButtonInteraction) {
+	const modal = new ModalBuilder()
+		.setCustomId("faq_course_modal")
+		.setTitle("Enter Course ID")
+		.addComponents(
+			new ActionRowBuilder<TextInputBuilder>().addComponents(
+				new TextInputBuilder()
+					.setCustomId("course_id_input")
+					.setLabel("Course ID")
+					.setPlaceholder("e.g., 367")
+					.setStyle(TextInputStyle.Short)
+					.setRequired(true)
+			)
+		);
+
+	await interaction.showModal(modal);
+}
+
 export async function handleButton(interaction: ButtonInteraction) {
 	const category = interaction.customId.replace("faq_", "");
+
+	if (category.startsWith("Course")) {
+		const isAdmin = interaction.memberPermissions?.has("ManageGuild");
+		const channelName = interaction.channel?.name || "";
+		const isCourseChannel = /^[0-9]+$/.test(channelName);
+
+		if (category === "Course" && (isAdmin && !isCourseChannel)) {
+			return showCourseIdModal(interaction);
+		} else {
+			const courseCategory = `Course/${channelName}`;
+			return sendFaqEmbed(interaction);
+		}
+	}
+
+	await sendFaqEmbed(interaction);
+}
+
+export async function handleSelect(interaction: StringSelectMenuInteraction) {
+	const selectedCategory = interaction.values[0];
+	await sendFaqEmbed(interaction);
+}
+
+export async function handleModalSubmit(interaction) {
+	const input = interaction.fields.getTextInputValue("course_id_input").trim();
+
+	if (!/^[0-9]+$/.test(input)) {
+		const errorEmbed = new EmbedBuilder()
+			.setColor("#FF0000")
+			.setTitle("Invalid Input")
+			.setDescription(`❌ Please enter a valid numeric Course ID.`);
+		return interaction.reply({
+			content: "",
+			embeds: [errorEmbed],
+			components: [],
+			ephemeral: true,
+		});
+	}
+
+	const category = `Course/${input}`;
+	await sendFaqEmbed(interaction);
+}
+
+export async function sendFaqEmbed(interaction) {
+	const category = interaction.customId.replace("faq_", "");
+
+	console.log("Category:", category);
+
+	const isAdmin = interaction.memberPermissions?.has("ManageGuild");
+	const channelName = interaction.channel?.name || "";
+	const isCourseChannel = /^[0-9]+$/.test(channelName);
 
 	const faqs = await interaction.client.mongo
 		.collection(DB.FAQS)
@@ -98,28 +203,61 @@ export async function handleButton(interaction: ButtonInteraction) {
 		)
 		.setTimestamp();
 
-	const allCategories = await interaction.client.mongo
+	var allCategories = await interaction.client.mongo
 		.collection(DB.FAQS)
 		.distinct("category");
 
-	const row = new ActionRowBuilder<ButtonBuilder>();
-	for (const cat of allCategories) {
+	allCategories = allCategories
+		.map((cat) => cat.split("/")[0])
+		.filter((value, index, self) => self.indexOf(value) === index);
+
+	const rows = [];
+	let currentRow = new ActionRowBuilder<ButtonBuilder>();
+	for (const [index, cat] of allCategories.entries()) {
 		const topCat = cat.split("/")[0];
-		row.addComponents(
-			new ButtonBuilder()
-				.setCustomId(`faq_${cat}`)
-				.setLabel(topCat)
-				.setStyle(
-					cat === category
-						? ButtonStyle.Primary
-						: ButtonStyle.Secondary
-				)
-		);
+
+		if (topCat === "Course") {
+			if (!isAdmin && isCourseChannel) {
+				currentRow.addComponents(
+					new ButtonBuilder()
+						.setCustomId(`faq_course/${channelName}`)
+						.setLabel(`CISC ${channelName}`)
+						.setStyle(ButtonStyle.Secondary)
+				);
+			} else if (currentRow.components.find) {
+				currentRow.addComponents(
+					new ButtonBuilder()
+						.setCustomId("faq_course_modal")
+						.setLabel("Course")
+						.setStyle(ButtonStyle.Secondary)
+				);
+			}
+		} else {
+			currentRow.addComponents(
+				new ButtonBuilder()
+					.setCustomId(`faq_${cat}`)
+					.setLabel(topCat)
+					.setStyle(
+						cat === category
+							? ButtonStyle.Primary
+							: ButtonStyle.Secondary
+					)
+			);
+		}
+
+		if ((index + 1) % 5 === 0) {
+			rows.push(currentRow);
+			currentRow = new ActionRowBuilder<ButtonBuilder>();
+		}
+	}
+
+	if (currentRow.components.length > 0) {
+		rows.push(currentRow);
 	}
 
 	return interaction.update({
-		content:`📚 **Frequently Asked Questions**\n\u200b`,
+		content: `📚 **Frequently Asked Questions**\n\u200b`,
 		embeds: [embed],
-		components: [row],
+		components: rows,
 	});
 }
