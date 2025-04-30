@@ -63,6 +63,8 @@ const FAQ_COOLDOWN = 3 * 1000;
 
 // Reset rateLimits Map before each test
 beforeEach(() => {
+	const messageCount = require('../../src/pieces/messageCount');
+	messageCount.rateLimits.clear();
 	jest.clearAllMocks();
 	mockFindOne.mockReset();
 	mockFind.mockReset();
