@@ -259,7 +259,23 @@ export async function handleFAQResponse(msg: Message, now: number): Promise<void
 	}
 
 	const userQuestion = msg.content.trim().toLowerCase();
-	const faqs = await msg.client.mongo.collection(DB.FAQS).find().toArray();
+
+	// Fetch all FAQs from the database
+	const allFaqs = await msg.client.mongo.collection(DB.FAQS).find().toArray();
+
+	let faqs;
+	
+	if (msg.channel instanceof TextChannel && msg.channel.parent?.name?.startsWith("CISC ")) {
+		// If in a course channel, allow only Course/XYZ for that course and all other non-Course categories
+		const courseCode = msg.channel.parent.name.split("CISC ")[1];
+		const allowedCourseCategory = `Course/${courseCode}`;
+		faqs = allFaqs.filter(faq =>
+			!faq.category.startsWith("Course/") || faq.category === allowedCourseCategory
+		);
+	} else {
+		// In general channels, include all FAQs except Course categories
+		faqs = allFaqs.filter(faq => !faq.category.startsWith("Course/"));
+	}
 
 	const foundFAQ = await findMatchingFAQ(userQuestion, faqs);
 
