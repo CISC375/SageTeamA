@@ -1,0 +1,183 @@
+[
+	{
+		"question": "How does BlockPy work?",
+		"answer": "BlockPy is a program used to code Python.",
+		"category": "Course/CIS1",
+		"link": ""
+	},
+	{
+		"question": "Are there exams?",
+		"answer": "Yes, There are 3 exams. Midterm 1 is in October, Midterm 2 is in November, and the Final is in December.",
+		"category": "Course/CIS1",
+		"link": ""
+	},
+	{
+		"question": "Is attendance mandatory?",
+		"answer": "Yes!",
+		"category": "Course/CIS1",
+		"link": ""
+	},
+	{
+		"question": "How many projects are there?",
+		"answer": "There are 3 projects around when the exams are.",
+		"category": "Course/CIS1",
+		"link": ""
+	},
+	{
+		"question": "How do the homeworks get graded?",
+		"answer": "BlockPy includes an auto grading system.",
+		"category": "Course/CIS1",
+		"link": ""
+	},
+	{
+		"question": "What is the grading scale?",
+		"answer": "Projects are worth the most, but exams do count for a lot!",
+		"category": "Course/181",
+		"link": ""
+	},
+	{
+		"question": "What software do I need?",
+		"answer": "You need VS Code & Typescript.",
+		"category": "Course/181",
+		"link": ""
+	},
+	{
+		"question": "Are there exams?",
+		"answer": "Yes there are 2 midterms and a final.",
+		"category": "Course/181",
+		"link": ""
+	},
+	{
+		"question": "Is attendance mandatory?",
+		"answer": "Yes!",
+		"category": "Course/181",
+		"link": ""
+	},
+	{
+		"question": "Is it required to show up for labs?",
+		"answer": "No. If you need help, labs are a great way to get help.",
+		"category": "Course/181",
+		"link": ""
+	},
+	{
+		"question": "How do I contact Roosen?",
+		"answer": "His email is roosen@udel.edu. But he prefers office hours!",
+		"category": "Course/210",
+		"link": ""
+	},
+	{
+		"question": "How does the final work?",
+		"answer": "The final is only worth 5% of the grade, BUT if you get a 60% or higher, you get the “+” grade of the grade you finished at prior to the final. But if you fail the final (eg. 59% or lower), you get the “-” grade of the LETTER BELOW you finished at. So for example, let’s say you get a B in the course prior to the final. If you pass it, you get a B+. If you fail it, you get a C-.",
+		"category": "Course/210",
+		"link": ""
+	},
+	{
+		"question": "How do I SSH into cisc210?",
+		"answer": "ssh (user)@cisc210.cis.udel.edu. You can also use ssh (user)@go.cis.udel.edu if you’re not at UD. You can then run ssh cisc210 when you get into go",
+		"category": "Course/210",
+		"link": ""
+	},
+	{
+		"question": "How many projects are there?",
+		"answer": "3 projects. Mostly in the 2nd half of the semester",
+		"category": "Course/210",
+		"link": ""
+	},
+	{
+		"question": "Why do we have to use Moodle?",
+		"answer": "Moodle sucks, but it’s required for the weekly tests.",
+		"category": "Course/210",
+		"link": ""
+	},
+	{
+		"question": "How do I contact Yarrington?",
+		"answer": "yarringt@udel.edu",
+		"category": "Course/220",
+		"link": ""
+	},
+	{
+		"question": "What software do I need for the course?",
+		"answer": "You need the CLion IDE.",
+		"category": "Course/220",
+		"link": ""
+	},
+	{
+		"question": "Is attendance mandatory?",
+		"answer": "Yes!",
+		"category": "Course/220",
+		"link": ""
+	},
+	{
+		"question": "How many exams are there?",
+		"answer": "3 exams. All on PAPER.",
+		"category": "Course/220",
+		"link": ""
+	},
+	{
+		"question": "How many projects are there?",
+		"answer": "3 projects",
+		"category": "Course/220",
+		"link": ""
+	},
+	{
+		"question": "How do I contact the instructor?",
+		"answer": "(instructor)@udel.edu",
+		"category": "Course/260",
+		"link": ""
+	},
+	{
+		"question": "How many exams do we have?",
+		"answer": "2 exams. 1 midterm and 1 final.",
+		"category": "Course/260",
+		"link": ""
+	},
+	{
+		"question": "How do I submit my homeworks to GradeScope?",
+		"answer": "Upload pictures and make sure to mark down where your answers are.",
+		"category": "Course/260",
+		"link": ""
+	},
+	{
+		"question": "Is attendance mandatory?",
+		"answer": "No, but you should still be going to class.",
+		"category": "Course/260",
+		"link": ""
+	},
+	{
+		"question": "Is there a way to access the slides outside of class?",
+		"answer": "I will share a folder containing all the presentations for the semester.",
+		"category": "Course/260",
+		"link": ""
+	},
+	{
+		"question": "Are there exams in this course?",
+		"answer": "No, but you will be graded mostly with your group project.",
+		"category": "Course/275",
+		"link": ""
+	},
+	{
+		"question": "How does the grading work?",
+		"answer": "Sprints are worth a lot.",
+		"category": "Course/275",
+		"link": ""
+	},
+	{
+		"question": "What software do I need for the course?",
+		"answer": "You need VS Code & Typescript",
+		"category": "Course/275",
+		"link": ""
+	},
+	{
+		"question": "How do I contact the instructor?",
+		"answer": "(instructor)@udel.edu",
+		"category": "Course/275",
+		"link": ""
+	},
+	{
+		"question": "How many Sprints are there for the Final Project",
+		"answer": "There are 3 sprints.",
+		"category": "Course/275",
+		"link": ""
+	}
+
+]

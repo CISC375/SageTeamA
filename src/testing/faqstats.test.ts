@@ -164,7 +164,7 @@ describe('FAQStats Command', () => {
     });
 
     describe('run method', () => {
-        it('should handle direct category filter', async () => {
+        it('should always show category selection menu', async () => {
             mockGetString.mockImplementation((param) => {
                 if (param === 'timeframe') return 'all';
                 if (param === 'category') return 'Test Category';
@@ -173,21 +173,16 @@ describe('FAQStats Command', () => {
             mockGetUser.mockReturnValue(null);
             mockGetBoolean.mockReturnValue(false);
             
-            mockToArray.mockResolvedValueOnce([
-                { 
-                    _id: 'faq_stats_1', 
-                    usageCount: 10, 
-                    category: 'Test Category',
-                    question: 'Test Question'
-                }
-            ]);
+            mockDistinct.mockResolvedValueOnce(['Category1', 'Category2', 'Test Category']);
             
             await command.run(mockCommandInteraction);
             
-            expect(mockFind).toHaveBeenCalledWith(expect.objectContaining({
-                category: 'Test Category'
+            expect(mockDistinct).toHaveBeenCalled();
+            expect(mockReply).toHaveBeenCalledWith(expect.objectContaining({
+                content: expect.stringContaining('Select a category'),
+                components: expect.any(Array)
             }));
-            expect(mockReply).toHaveBeenCalled();
+            expect(client.on).toHaveBeenCalledWith('interactionCreate', expect.any(Function));
         });
 
         it('should show category selection when no category specified', async () => {
@@ -269,7 +264,7 @@ describe('FAQStats Command', () => {
             );
             expect(embedBuilderInstance.addFields).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    name: 'Total FAQ Usage',
+                    name: expect.stringContaining('Total FAQ Usage'),
                     value: expect.stringContaining('15 times')
                 })
             );
