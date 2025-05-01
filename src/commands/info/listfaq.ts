@@ -116,7 +116,8 @@ export async function setupCategoryHandler(client) {
 
 // Show a modal to input the course ID
 export async function showCourseIdModal(interaction: ButtonInteraction) {
-	const modal = new ModalBuilder()
+	try {
+		const modal = new ModalBuilder()
 		.setCustomId("faq_course_modal")
 		.setTitle("Enter Course ID")
 		.addComponents(
@@ -131,6 +132,14 @@ export async function showCourseIdModal(interaction: ButtonInteraction) {
 		);
 
 	await interaction.showModal(modal);
+	} catch (err) {
+		// Handle expired or already acknowledged interactions
+		if (err.code === 10062) {
+			// silently ignore expired or already acknowledged interaction
+		} else {
+			console.error("showCourseIdModal error:", err);
+		}
+	}
 }
 
 // Handle button interactions for FAQ categories
