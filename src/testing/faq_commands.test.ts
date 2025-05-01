@@ -12,7 +12,7 @@ import EditFaqCommand, {
 import AddFaqCommand, {
 	handleModalSubmit as addModalSubmit,
 } from "../commands/admin/addfaq";
-import { handleButton as listFaqButton } from "../commands/info/listfaq";
+import { handleModalSubmit, handleButton as listFaqButton, sendFaqEmbed } from "../commands/info/listfaq";
 import {
 	StringSelectMenuInteraction,
 	ButtonInteraction,
@@ -476,6 +476,7 @@ describe("FAQ Commands", () => {
 				find: jest.fn().mockReturnValue({
 					toArray: jest.fn().mockResolvedValue([]),
 				}),
+				distinct: jest.fn().mockResolvedValue(["Category1"]),
 			});
 
 			const mockInteraction = {
@@ -484,15 +485,89 @@ describe("FAQ Commands", () => {
 				isButton: jest.fn().mockReturnValue(true),
 			} as unknown as ButtonInteraction;
 
-			await listFaqButton(mockInteraction);
-
-			await listFaqButton(mockInteraction);
+			await sendFaqEmbed(mockInteraction, "");
 
 			const embed = (mockInteraction.update as jest.Mock).mock.calls[0][0]
 				.embeds[0].data;
 
 			expect(embed.title).toBe("Error");
 			expect(embed.description).toContain("No FAQs found");
+		});
+		
+		it("should open course modal when Course button clicked from non-course channel", async () => {
+			const mockInteraction = {
+				...mockInteractionBase,
+				customId: "faq_Course",
+				isButton: jest.fn().mockReturnValue(true),
+				showModal: jest.fn(),
+				channel: {
+				  name: "channel1",
+				},
+			  } as unknown as ButtonInteraction;
+			  
+	
+			await listFaqButton(mockInteraction);
+			expect(mockInteraction.showModal).toHaveBeenCalled();
+		});
+
+		it("should show FAQ from modal input (valid course ID)", async () => {
+			mockMongoCollection.mockReturnValue({
+				find: jest.fn().mockReturnValue({
+					toArray: jest.fn().mockResolvedValue([{ question: "What is CS1?" }]),
+				}),
+				distinct: jest.fn().mockResolvedValue(["Course", "Job"]),
+			});
+	
+			const mockInteraction = {
+				...mockInteractionBase,
+				customId: "faq_course_modal",
+				fields: { getTextInputValue: jest.fn().mockReturnValue("CS1") },
+				update: jest.fn(),
+			} as any;
+	
+			await handleModalSubmit(mockInteraction);
+	
+			expect(mockInteraction.update).toHaveBeenCalledWith(
+				expect.objectContaining({
+					embeds: [expect.objectContaining({ data: expect.anything() })],
+					components: expect.any(Array),
+				})
+			);
+		});
+
+		it("should show error embed if no FAQs found via modal input", async () => {
+			mockMongoCollection.mockReturnValue({
+				find: jest.fn().mockReturnValue({
+					toArray: jest.fn().mockResolvedValue([]),
+				}),
+				distinct: jest.fn().mockResolvedValue(["Course"]),
+			});
+	
+			const mockInteraction = {
+				...mockInteractionBase,
+				customId: "faq_course_modal",
+				fields: { getTextInputValue: jest.fn().mockReturnValue("MISSING") },
+				update: jest.fn(),
+			} as any;
+	
+			await handleModalSubmit(mockInteraction);
+			const embed = (mockInteraction.update as jest.Mock).mock.calls[0][0].embeds[0].data;
+	
+			expect(embed.title).toBe("Error");
+			expect(embed.description).toContain("No FAQs found");
+		});
+
+		it("should not throw on expired interaction (code 10062)", async () => {
+			const mockInteraction = {
+				...mockInteractionBase,
+				customId: "faq_Job",
+				isButton: jest.fn().mockReturnValue(true),
+				update: jest.fn(() => {
+					throw { code: 10062 };
+				}),
+			} as unknown as ButtonInteraction;
+	
+			await expect(listFaqButton(mockInteraction)).resolves.not.toThrow();
 		});
 	});
 
