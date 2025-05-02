@@ -4,7 +4,6 @@ import {
 	ApplicationCommandPermissions,
 	ChatInputCommandInteraction,
 	InteractionResponse,
-	AttachmentBuilder,
 	EmbedBuilder
 } from 'discord.js';
 import { DB } from '@root/config';
@@ -40,6 +39,9 @@ export default class extends Command {
 					return msg.reply('❌ The file must contain an array of FAQ objects.');
 				}
 
+				const faqCollection = interaction.client.mongo.collection(DB.FAQS);
+
+				// check for valid faqs
 				const validFAQs = json.filter(faq =>
 					faq.question && faq.answer && faq.category
 				);
@@ -48,12 +50,31 @@ export default class extends Command {
 					return msg.reply('❌ No valid FAQ entries found in the file.');
 				}
 
-				const result = await interaction.client.mongo.collection(DB.FAQS).insertMany(validFAQs);
+				// check for duplicates
+				const uniqueFAQs = [];
+
+				for (const faq of validFAQs) {
+					const duplicate = await faqCollection.findOne({
+						question: faq.question,
+						answer: faq.answer,
+						category: faq.category
+					});
+
+					if (!duplicate) {
+						uniqueFAQs.push(faq);
+					}
+				}
+
+				if (uniqueFAQs.length === 0) {
+					return msg.reply('⚠️ All uploaded FAQs already exist.');
+				}
+
+				const result = await faqCollection.insertMany(uniqueFAQs);
 
 				const embed = new EmbedBuilder()
 					.setColor('#00FF00')
 					.setTitle('✅ FAQs Imported')
-					.setDescription(`${result.insertedCount} FAQs successfully added.`);
+					.setDescription(`${result.insertedCount} new FAQ(s) added. Skipped ${validFAQs.length - result.insertedCount} duplicate(s).`);
 
 				await msg.reply({ embeds: [embed] });
 			} catch (err) {
