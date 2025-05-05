@@ -155,7 +155,6 @@ describe("FAQ Commands", () => {
 
 			await mockClient.emit("interactionCreate", mockInteraction);
 
-			// 꺼내기
 			const updateCall = (mockInteraction.update as jest.Mock).mock
 				.calls[0][0];
 			const embed = updateCall.embeds[0].data;
