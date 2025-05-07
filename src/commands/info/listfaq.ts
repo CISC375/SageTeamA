@@ -118,20 +118,20 @@ export async function setupCategoryHandler(client) {
 export async function showCourseIdModal(interaction: ButtonInteraction) {
 	try {
 		const modal = new ModalBuilder()
-		.setCustomId("faq_course_modal")
-		.setTitle("Enter Course ID")
-		.addComponents(
-			new ActionRowBuilder<TextInputBuilder>().addComponents(
-				new TextInputBuilder()
-					.setCustomId("course_id_input")
-					.setLabel("Course ID")
-					.setPlaceholder("e.g., 367")
-					.setStyle(TextInputStyle.Short)
-					.setRequired(true)
-			)
-		);
+			.setCustomId("faq_course_modal")
+			.setTitle("Enter Course ID")
+			.addComponents(
+				new ActionRowBuilder<TextInputBuilder>().addComponents(
+					new TextInputBuilder()
+						.setCustomId("course_id_input")
+						.setLabel("Course ID")
+						.setPlaceholder("e.g., 367")
+						.setStyle(TextInputStyle.Short)
+						.setRequired(true)
+				)
+			);
 
-	await interaction.showModal(modal);
+		await interaction.showModal(modal);
 	} catch (err) {
 		// Handle expired or already acknowledged interactions
 		if (err.code === 10062) {
@@ -231,7 +231,9 @@ export async function sendFaqEmbed(interaction, category) {
 							`faq_Course/${channelName.split("/CISC ")[1]}`
 						)
 						.setLabel(`${channelName}`)
-						.setStyle(ButtonStyle.Secondary)
+						.setStyle(channelName.split("/CISC ")[1] === category.split("Course/")[1]
+							? ButtonStyle.Secondary
+							: ButtonStyle.Primary)
 				);
 			} else if (currentRow.components.find) {
 				currentRow.addComponents(
