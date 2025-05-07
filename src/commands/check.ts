@@ -1,6 +1,6 @@
 import { EmbedBuilder, ChatInputCommandInteraction, ApplicationCommandOptionData, InteractionResponse, ApplicationCommandOptionType } from 'discord.js';
 import { SageUser } from '@lib/types/SageUser';
-import { DB, MAINTAINERS } from '@root/src/pieces/config';
+import { DB, MAINTAINERS } from '@root/config';
 import { Command } from '@lib/types/Command';
 
 export default class extends Command {

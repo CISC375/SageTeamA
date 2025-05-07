@@ -1,4 +1,4 @@
-import { BOT } from '@root/src/pieces/config';
+import { BOT } from '@root/config';
 import { ButtonInteraction, ChatInputCommandInteraction, ActionRowBuilder, ButtonBuilder, EmbedBuilder, InteractionResponse, ButtonStyle } from 'discord.js';
 import { Command } from '@lib/types/Command';
 import { SageInteractionType } from '@lib/types/InteractionType';

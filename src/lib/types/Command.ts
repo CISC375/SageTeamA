@@ -1,4 +1,4 @@
-import { ROLES } from '@root/src/pieces/config';
+import { ROLES } from '@root/config';
 import { ApplicationCommandOptionData, ApplicationCommandPermissions, ApplicationCommandPermissionType, ApplicationCommandType, CommandInteraction, InteractionResponse,
 	Message,
 	MessageContextMenuCommandInteraction } from 'discord.js';

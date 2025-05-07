@@ -1,5 +1,5 @@
 import { ApplicationCommandOptionData, ApplicationCommandOptionType, ChatInputCommandInteraction, EmbedBuilder, InteractionResponse, TextChannel } from 'discord.js';
-import { CHANNELS } from '@root/src/pieces/config';
+import { CHANNELS } from '@root/config';
 import { Command } from '@lib/types/Command';
 
 export default class extends Command {

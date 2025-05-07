@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 import { Client, TextChannel, Role, Message, EmbedBuilder, PartialMessage, ThreadChannel, ChannelType } from 'discord.js';
 import { DatabaseError } from '@lib/types/errors';
-import { CHANNELS, DB, ROLES, GUILDS } from '@root/src/pieces/config';
+import { CHANNELS, DB, ROLES, GUILDS } from '@root/config';
 import { SageUser } from '@lib/types/SageUser';
 import { calcNeededExp } from '@lib/utils/generalUtils';
 import { levenshteinDistance } from '@lib/utils/levenshtein';
@@ -217,7 +217,7 @@ async function handleFAQResponse(msg: Message): Promise<void> {
 	);
 
 	// Get all FAQs from the database
-	const faqs = await msg.client.mongo.collection(DB.FAQ).find().toArray() as FAQItem[];
+	const faqs = await msg.client.mongo.collection(DB.FAQS).find().toArray() as FAQItem[];
 	if (!faqs || faqs.length === 0) return;
 
 	// First, try to find an exact or very close match using Levenshtein distance

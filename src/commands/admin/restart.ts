@@ -1,4 +1,4 @@
-import { BOT } from '@root/src/pieces/config';
+import { BOT } from '@root/config';
 import { BOTMASTER_PERMS } from '@lib/permissions';
 import { ActivityType, ApplicationCommandPermissions, ChatInputCommandInteraction, InteractionResponse } from 'discord.js';
 import { Command } from '@lib/types/Command';

@@ -1,5 +1,5 @@
 import { PVQuestion } from '@lib/types/PVQuestion';
-import { BOT, DB, MAINTAINERS } from '@root/src/pieces/config';
+import { BOT, DB, MAINTAINERS } from '@root/config';
 import { ADMIN_PERMS, STAFF_PERMS } from '@lib/permissions';
 import { ApplicationCommandOptionData, ApplicationCommandPermissions, ChatInputCommandInteraction, GuildChannel, Message, EmbedBuilder, TextChannel, ThreadChannel,
 	ApplicationCommandOptionType, ChannelType, InteractionResponse } from 'discord.js';

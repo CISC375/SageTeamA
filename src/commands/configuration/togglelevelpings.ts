@@ -1,4 +1,4 @@
-import { DB } from '@root/src/pieces/config';
+import { DB } from '@root/config';
 import { SageUser } from '@lib/types/SageUser';
 import { ChatInputCommandInteraction, InteractionResponse } from 'discord.js';
 import { DatabaseError } from '@lib/types/errors';

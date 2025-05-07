@@ -1,7 +1,7 @@
 import { BOTMASTER_PERMS } from '@lib/permissions';
 import { ApplicationCommandOptionData, ApplicationCommandPermissions, ChatInputCommandInteraction, ActionRowBuilder, ModalActionRowComponentBuilder, TextChannel,
 	TextInputBuilder, ApplicationCommandOptionType, InteractionResponse, ModalBuilder, TextInputStyle } from 'discord.js';
-import { BOT } from '@root/src/pieces/config';
+import { BOT } from '@root/config';
 import { Command } from '@lib/types/Command';
 
 export default class extends Command {

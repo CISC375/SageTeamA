@@ -3,7 +3,7 @@ import nodemailer from 'nodemailer';
 import { ADMIN_PERMS, STAFF_PERMS } from '@lib/permissions';
 import { Course } from '@lib/types/Course';
 import { SageUser } from '@lib/types/SageUser';
-import { DB, EMAIL } from '@root/src/pieces/config';
+import { DB, EMAIL } from '@root/config';
 import { Command } from '@lib/types/Command';
 import { getMsgIdFromLink } from '@root/src/lib/utils/generalUtils';
 

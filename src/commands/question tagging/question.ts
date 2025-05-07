@@ -2,7 +2,7 @@ import { ApplicationCommandOptionData, ChatInputCommandInteraction, EmbedField, 
 import { Course } from '@lib/types/Course';
 import { QuestionTag } from '@lib/types/QuestionTag';
 import { SageUser } from '@lib/types/SageUser';
-import { BOT, DB, MAINTAINERS } from '@root/src/pieces/config';
+import { BOT, DB, MAINTAINERS } from '@root/config';
 import { Command } from '@lib/types/Command';
 import { generateErrorEmbed } from '@root/src/lib/utils/generalUtils';
 

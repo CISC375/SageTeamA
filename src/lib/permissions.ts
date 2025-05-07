@@ -1,4 +1,4 @@
-import { ROLES } from '@root/src/pieces/config';
+import { ROLES } from '@root/config';
 import { ApplicationCommandPermissions, ApplicationCommandPermissionType, CommandInteraction, Message, Team } from 'discord.js';
 
 export function staffPerms(msg: Message): boolean {

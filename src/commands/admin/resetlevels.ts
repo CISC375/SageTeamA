@@ -1,4 +1,4 @@
-import { DB, FIRST_LEVEL, LEVEL_TIER_ROLES, ROLES } from '@root/src/pieces/config';
+import { DB, FIRST_LEVEL, LEVEL_TIER_ROLES, ROLES } from '@root/config';
 import { BOTMASTER_PERMS } from '@lib/permissions';
 import { Command } from '@lib/types/Command';
 import { ApplicationCommandPermissions, ChatInputCommandInteraction, InteractionResponse } from 'discord.js';

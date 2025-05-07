@@ -5,7 +5,7 @@ import {
 } from 'discord.js';
 import { Command, CompCommand } from '@lib/types/Command';
 import * as fs from 'fs';
-import { DB, CHANNELS, ROLE_DROPDOWNS, BOT } from '@root/src/pieces/config';
+import { DB, CHANNELS, ROLE_DROPDOWNS, BOT } from '@root/config';
 import moment from 'moment';
 import { Reminder } from '@lib/types/Reminder';
 import { Course } from '@lib/types/Course';

@@ -1,4 +1,4 @@
-import { DB, EMAIL } from '@root/src/pieces/config';
+import { DB, EMAIL } from '@root/config';
 import { ADMIN_PERMS, STAFF_PERMS } from '@lib/permissions';
 import { SageUser } from '@lib/types/SageUser';
 import { ChatInputCommandInteraction, ApplicationCommandPermissions, ApplicationCommandOptionData, ApplicationCommandOptionType, InteractionResponse } from 'discord.js';

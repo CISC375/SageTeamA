@@ -1,5 +1,5 @@
 import { Reminder } from '@lib/types/Reminder';
-import { DB } from '@root/src/pieces/config';
+import { DB } from '@root/config';
 import { ApplicationCommandOptionData, ApplicationCommandOptionType, ChatInputCommandInteraction, InteractionResponse } from 'discord.js';
 import { Command } from '@lib/types/Command';
 

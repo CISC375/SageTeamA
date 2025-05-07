@@ -1,7 +1,7 @@
 import { ApplicationCommandOptionData, ApplicationCommandOptionType, ApplicationCommandPermissions, ChatInputCommandInteraction, InteractionResponse } from 'discord.js';
 import { AssignableRole } from '@lib/types/AssignableRole';
 import { ADMIN_PERMS } from '@lib/permissions';
-import { DB } from '@root/src/pieces/config';
+import { DB } from '@root/config';
 import { Command } from '@lib/types/Command';
 import { updateDropdowns } from '@root/src/lib/utils/generalUtils';
 

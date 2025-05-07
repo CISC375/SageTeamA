@@ -3,7 +3,7 @@ import { generateErrorEmbed, generateQuestionId } from '@lib/utils/generalUtils'
 import { Course } from '@lib/types/Course';
 import { SageUser } from '@lib/types/SageUser';
 import { PVQuestion } from '@lib/types/PVQuestion';
-import { BOT, DB, MAINTAINERS } from '@root/src/pieces/config';
+import { BOT, DB, MAINTAINERS } from '@root/config';
 import { Command } from '@lib/types/Command';
 
 export default class extends Command {

@@ -1,4 +1,4 @@
-import { BOT } from '@root/src/pieces/config';
+import { BOT } from '@root/config';
 import { BOTMASTER_PERMS } from '@root/src/lib/permissions';
 import { Command } from '@root/src/lib/types/Command';
 import { readdirRecursive } from '@root/src/lib/utils/generalUtils';

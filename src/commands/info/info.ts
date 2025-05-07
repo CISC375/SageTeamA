@@ -1,5 +1,5 @@
 import { ChatInputCommandInteraction, InteractionResponse } from 'discord.js';
-import { BOT, MAINTAINERS } from '@root/src/pieces/config';
+import { BOT, MAINTAINERS } from '@root/config';
 import { Command } from '@lib/types/Command';
 
 export default class extends Command {

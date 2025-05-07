@@ -1,4 +1,4 @@
-import { DB } from '@root/src/pieces/config';
+import { DB } from '@root/config';
 import { Reminder } from '@lib/types/Reminder';
 import { ChatInputCommandInteraction, EmbedBuilder, InteractionResponse } from 'discord.js';
 import { reminderTime } from '@root/src/lib/utils/generalUtils';

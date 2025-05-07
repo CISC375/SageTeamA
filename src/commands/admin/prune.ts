@@ -1,5 +1,5 @@
 import { Command } from '@lib/types/Command';
-import { ROLES } from '@root/src/pieces/config';
+import { ROLES } from '@root/config';
 import { BOTMASTER_PERMS } from '@lib/permissions';
 import { ApplicationCommandPermissions, ChatInputCommandInteraction, InteractionResponse } from 'discord.js';
 

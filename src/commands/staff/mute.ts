@@ -1,5 +1,5 @@
 import { ADMIN_PERMS, STAFF_PERMS } from '@lib/permissions';
-import { MAINTAINERS, ROLES } from '@root/src/pieces/config';
+import { MAINTAINERS, ROLES } from '@root/config';
 import { ApplicationCommandPermissions, ChatInputCommandInteraction, ApplicationCommandOptionData, ApplicationCommandOptionType, InteractionResponse } from 'discord.js';
 import { Command } from '@lib/types/Command';
 

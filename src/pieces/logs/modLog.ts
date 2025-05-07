@@ -1,5 +1,5 @@
 import { Client, TextChannel, EmbedField, EmbedBuilder, GuildMember, PartialGuildMember, GuildBan, AuditLogEvent } from 'discord.js';
-import { GUILDS, CHANNELS, ROLES } from '@root/src/pieces/config';
+import { GUILDS, CHANNELS, ROLES } from '@root/config';
 
 async function processBanAdd(ban: GuildBan, modLog: TextChannel): Promise<void> {
 	const { guild, user } = ban;
