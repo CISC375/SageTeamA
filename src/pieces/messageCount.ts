@@ -220,7 +220,7 @@ async function handleFAQResponse(msg: Message): Promise<void> {
 	const faqs = await msg.client.mongo.collection(DB.FAQS).find().toArray() as FAQItem[];
 	if (!faqs || faqs.length === 0) return;
 
-	// First, try to find an exact or very close match using Levenshtein distance
+	// First, try to fid an exact or very close match using Levenshtein distance
 	let foundFAQ: FAQItem | null = null;
 	const LEVENSHTEIN_THRESHOLD = 5; // Adjust as needed
 
